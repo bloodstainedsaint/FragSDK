@@ -39,7 +39,7 @@ for _, mod in ipairs(Modules) do
     LoadModule(mod)
 end
 
--- FIX: Initialize State IMMEDIATELY so CreateWindow can use it
+-- CRITICAL FIX: Initialize State here so it exists before CreateWindow is called
 if Frag.InitState then 
     Frag.State = Frag.InitState() 
 end

@@ -1,9 +1,14 @@
 local Module = {}
 
--- Math Helpers
+-- Math
 function Module.Lerp(a, b, t) return a + (b - a) * t end
+
 function Module.LerpColor(c1, c2, t)
-    return Color3.new(Module.Lerp(c1.R, c2.R, t), Module.Lerp(c1.G, c2.G, t), Module.Lerp(c1.B, c2.B, t))
+    return Color3.new(
+        Module.Lerp(c1.R, c2.R, t),
+        Module.Lerp(c1.G, c2.G, t),
+        Module.Lerp(c1.B, c2.B, t)
+    )
 end
 
 function Module.FitText(text, maxWidth)
@@ -12,7 +17,18 @@ function Module.FitText(text, maxWidth)
     return text
 end
 
--- Drawing Wrappers (Direct access to global DrawingImmediate)
+function Module.WrapText(str, maxChars)
+    local lines, currentLine = {}, ""
+    for word in str:gmatch("%S+") do
+        if #currentLine + #word + 1 > maxChars then table.insert(lines, currentLine); currentLine = word
+        else if currentLine == "" then currentLine = word else currentLine = currentLine .. " " .. word end end
+    end
+    if currentLine ~= "" then table.insert(lines, currentLine) end
+    if #lines == 0 then lines = {str} end
+    return lines
+end
+
+-- Drawing
 function Module.Rect(pos, size, color, alpha) DrawingImmediate.FilledRectangle(pos, size, color, alpha or 1) end
 function Module.Outline(pos, size, color, alpha) DrawingImmediate.Rectangle(pos, size, color, alpha or 1, 1) end
 function Module.Label(pos, text, color, center, alpha) DrawingImmediate.Text(pos, 13, color, alpha or 1, text, center or false, "Proggy") end

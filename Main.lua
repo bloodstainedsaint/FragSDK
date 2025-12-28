@@ -39,8 +39,10 @@ for _, mod in ipairs(Modules) do
     LoadModule(mod)
 end
 
--- Initialize State defined in modules
-if Frag.InitState then Frag.InitState() end
+-- FIX: Initialize State IMMEDIATELY so CreateWindow can use it
+if Frag.InitState then 
+    Frag.State = Frag.InitState() 
+end
 
 print("[FragSDK] Loaded Successfully")
 return Frag

@@ -1,41 +1,93 @@
 local Module = {}
 
 Module.Windows = {}
-Module.Binders = {}
-Module.Flags = {}
+-- We keep registries for widgets if you expand later
+Module.Widgets = {} 
 
 local WIN_W, COL_W = 560, 265 
 
+-- [ 1. DRAG & RESIZE LOGIC ] --
 function Module.HandleDraggable(self, obj, ignoreEditMode, dragSize)
+    -- If menu is closed, do nothing (unless pinned logic exists, but we keep it simple)
     if not self.State.Enabled then
-        obj.dragging = false; return
+        obj.dragging = false
+        obj.resizing = false
+        return
+    end
+
+    -- If NOT in Edit Mode and NOT a special object (like Window Header), stop.
+    if not self.State.EditMode and not ignoreEditMode then
+        obj.dragging = false
+        obj.resizing = false
+        return
     end
 
     local click = self.State.MouseDown and not self.State.MouseHeld
     local hitSize = dragSize or obj.size
-    local hovered = self:IsMouseOver(obj.pos, hitSize)
+    
+    -- Resize Logic (Only if object allows it and we are in Edit Mode)
+    if obj.resizable and self.State.EditMode and not self.State.InputBusy then
+        local handleSize = 15
+        local handlePos = vector.create(obj.pos.x + obj.size.x - handleSize, obj.pos.y + obj.size.y - handleSize, 0)
+        if click and self:IsMouseOver(handlePos, vector.create(handleSize, handleSize, 0)) then
+            obj.resizing = true
+        end
+    end
 
-    if not self.State.InputBusy then
+    -- Drag Logic
+    if not self.State.InputBusy and not obj.resizing then
+        local hovered = self:IsMouseOver(obj.pos, hitSize)
         if not obj.dragging and click and hovered then 
             obj.dragging = true
             obj.dragOffset = vector.create(self.State.MousePos.x - obj.pos.x, self.State.MousePos.y - obj.pos.y, 0) 
         end
     end
     
-    if obj.dragging then
+    -- Processing
+    if obj.resizing then
+        if self.State.MouseDown then
+            local rawSize = vector.create(self.State.MousePos.x - obj.pos.x, self.State.MousePos.y - obj.pos.y, 0)
+            -- Apply Snap if available, else raw
+            if self.CalculateResizeSnap then
+                obj.size = self:CalculateResizeSnap(obj, rawSize)
+            else
+                obj.size = rawSize -- Fallback
+            end
+            self.State.InputBusy = true
+        else
+            obj.resizing = false
+        end
+    elseif obj.dragging then
         if self.State.MouseDown then
             local rawPos = vector.create(self.State.MousePos.x - obj.dragOffset.x, self.State.MousePos.y - obj.dragOffset.y, 0)
-            -- Call the snap function from Input module (mixed into self)
+            -- Apply Snap
             obj.pos = self:CalculateDragSnap(obj, rawPos)
             self.State.InputBusy = true
         else 
             obj.dragging = false 
         end
     end
+
+    -- Draw Resize Handle (Visual)
+    if obj.resizable and self.State.EditMode and self.State.Enabled then
+        local p = obj.pos
+        local s = obj.size
+        local hs = 10 
+        local c = obj.resizing and self.Theme.Accent or self.Theme.ResizeHandle
+        local z = self.Layer.Widget + 5
+        -- Draw little triangle in bottom right
+        self.Triangle(
+            vector.create(p.x + s.x, p.y + s.y, z), 
+            vector.create(p.x + s.x - hs, p.y + s.y, z), 
+            vector.create(p.x + s.x, p.y + s.y - hs, z), 
+            c, 
+            self.State.MenuAlpha
+        )
+    end
 end
 
+-- [ 2. WINDOW CREATION ] --
 function Module.CreateWindow(self, props)
-    -- This uses self.State, which relies on Main.lua initializing it first
     if props.ToggleKey and self.State then self.State.ToggleKey = props.ToggleKey end
     
     if self.Windows[1] then 
@@ -47,18 +99,22 @@ function Module.CreateWindow(self, props)
         name = props.Name or "UI", 
         pos = props.Position or vector.create(200,200,0), 
         size = vector.create(WIN_W, 30, 0), 
-        dragging=false, dragOffset=vector.create(0,0,0), 
-        pages={}, activePage=1, pinned=false,
-        tabAlpha = 1, activePagePrev = 1
+        dragging = false, 
+        dragOffset = vector.create(0,0,0), 
+        pages = {}, 
+        activePage = 1, 
+        pinned = false,
+        tabAlpha = 1, 
+        activePagePrev = 1,
+        resizable = false -- Main windows usually aren't resizable in this lib style
     }
 
     function window:Draw(Lib)
-        -- VISIBILITY CHECK
         if not Lib.State.Enabled then return end
         
         local dt = Lib.State.DeltaTime
         
-        -- Animation Logic
+        -- Tab Animation
         if self.activePage ~= self.activePagePrev then
             self.tabAlpha = 0 
             self.activePagePrev = self.activePage
@@ -68,7 +124,7 @@ function Module.CreateWindow(self, props)
         local page = self.pages[self.activePage]
         local lY, rY = 55, 55
         
-        -- Height Calculation
+        -- Height Calc
         if page then
             for _, s in ipairs(page.sections) do
                 local h = 28
@@ -84,15 +140,14 @@ function Module.CreateWindow(self, props)
         local totalH = math.max(lY, rY)
         self.size = vector.create(WIN_W, totalH + 20, 0)
 
-        -- Window Dragging
+        -- Handle Drag (True = Ignore Edit Mode, can always drag header)
         Lib:HandleDraggable(self, true, vector.create(WIN_W, 34, 0))
         
         local x, y, z = self.pos.x, self.pos.y, Lib.Layer.Base
         local click = Lib.State.MouseDown and not Lib.State.MouseHeld
         if Lib.State.InputBusy and not self.dragging then click = false end
 
-        -- Draw Main Window
-        -- Note: We pass alpha * MenuAlpha so the whole window fades
+        -- Draw Window
         local winAlpha = Lib.State.MenuAlpha
         if winAlpha < 0.01 then return end
 
@@ -102,7 +157,7 @@ function Module.CreateWindow(self, props)
         Lib.Label(vector.create(x+12,y+10,z+1), self.name, Lib.Theme.Text, false, winAlpha)
         Lib.Line(vector.create(x+1,y+34,z), vector.create(x+WIN_W-1,y+34,z), Lib.Theme.Border, winAlpha, 1)
 
-        -- Draw Tabs
+        -- Tabs
         local tx = 130 
         for i, pg in ipairs(self.pages) do
             local w = (7*#pg.name)+20
@@ -129,7 +184,6 @@ function Module.CreateWindow(self, props)
                     sh = sh + add
                 end
                 
-                -- Section Visuals
                 Lib.Rect(vector.create(sx,sy,z+1), vector.create(COL_W,sh,0), Lib.Theme.Border, contentAlpha)
                 Lib.Rect(vector.create(sx+1,sy+1,z+1), vector.create(COL_W-2,sh-2,0), Lib.Theme.SectionBg, contentAlpha)
                 Lib.Rect(vector.create(sx+1,sy+1,z+2), vector.create(COL_W-2, 22, 0), Lib.Theme.Header, contentAlpha)
@@ -138,102 +192,61 @@ function Module.CreateWindow(self, props)
 
                 local cy = sy + 30
                 for _, item in ipairs(sect.items) do
-                    -- Init Animation State for Items
                     if not item.anim then item.anim = { slide = 0, hover = 0 } end
-                    
                     local nmX, valX = sx+10, sx+COL_W-15
                     local iH = 28
                     local itemPos = vector.create(sx+4, cy-2, 0)
                     local hover = Lib:IsMouseOver(itemPos, vector.create(COL_W-8, 24, 0))
                     local iClick = hover and click
-                    
-                    -- Update Hover Anim
                     item.anim.hover = Lib.Lerp(item.anim.hover, hover and 1 or 0, dt * 10)
                     
                     if item.type == "toggle" then
                         if iClick then 
-                            item.value = not item.value
-                            if item.callback then item.callback(item.value) end
+                            item.value = not item.value; if item.callback then item.callback(item.value) end
                             if item.flag then Lib.Flags[item.flag] = item.value end 
                         end
-                        
-                        -- Anim
                         local targetSlide = item.value and 1 or 0
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetSlide, dt * 12)
-                        
                         Lib.Label(vector.create(nmX, cy+4, z+3), item.name, item.value and Lib.Theme.Text or Lib.Theme.TextDim, false, contentAlpha)
-                        
-                        local swW = 22
-                        local swX = valX - swW
+                        local swW = 22; local swX = valX - swW
                         local curCol = Lib.LerpColor(Lib.Theme.SwitchBg, Lib.Theme.Accent, item.anim.slide)
-                        
                         Lib.Circle(vector.create(swX, cy+10, z+3), 6, curCol, contentAlpha)
                         Lib.Circle(vector.create(swX+12, cy+10, z+3), 6, curCol, contentAlpha)
                         Lib.Rect(vector.create(swX, cy+4, z+3), vector.create(12, 12, 0), curCol, contentAlpha)
-                        
                         local knX = swX + (12 * item.anim.slide)
                         Lib.Circle(vector.create(knX, cy+10, z+4), 4, Lib.Theme.Text, contentAlpha)
 
                     elseif item.type == "slider" then
                         if hover and isleftpressed() and not Lib.State.InputBusy then
-                            local barW = 100
-                            local bx = valX - barW - 15 -- Adjust logic from original
-                            -- The original logic: valX is Right Side.
-                            -- bx = valX - (TextWidth) - Padding - BarWidth
-                            local valStr = tostring(item.value)
-                            local vw = 7*#valStr
-                            bx = valX - vw - 15 - 100
-                            
+                            local barW = 100; local bx = valX - 7*#tostring(item.value) - 15 - barW
                             local pct = math.clamp((Lib.State.MousePos.x - bx) / 100, 0, 1)
                             local nv = math.floor(item.min + (item.max - item.min) * pct)
                             if nv ~= item.value then 
-                                item.value = nv
-                                if item.callback then item.callback(nv) end
-                                if item.flag then Lib.Flags[item.flag] = nv end 
+                                item.value = nv; if item.callback then item.callback(nv) end; if item.flag then Lib.Flags[item.flag] = nv end 
                             end
                         end
-                        
                         Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
-                        
-                        local valStr = tostring(item.value)
-                        local valW = 7 * #valStr
+                        local valStr = tostring(item.value); local valW = 7 * #valStr
                         Lib.Label(vector.create(valX - valW, cy + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
-                        
-                        local barW = 100
-                        local barX = valX - valW - 15 - barW
-                        local barY = cy + 10
-                        
+                        local barW = 100; local barX = valX - valW - 15 - barW; local barY = cy + 10
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
-                        
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetFill, dt * 15)
-                        
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(item.anim.slide, 2, 0), Lib.Theme.Accent, contentAlpha)
                         Lib.Circle(vector.create(barX+item.anim.slide, barY+1, z+4), 4, Lib.Theme.Text, contentAlpha)
 
                     elseif item.type == "dropdown" then
                         if iClick then item.open = not item.open end
-                        
                         local dispText = item.selected
                         if item.multi then
-                            local active = {}
-                            for k,v in pairs(item.selected) do if v then table.insert(active, k) end end
-                            if #active == 0 then dispText = "None" 
-                            elseif #active <= 3 then dispText = table.concat(active, ", ") 
-                            else dispText = #active .. " Selected" end
+                            local active = {}; for k,v in pairs(item.selected) do if v then table.insert(active, k) end end
+                            if #active == 0 then dispText = "None" elseif #active <= 3 then dispText = table.concat(active, ", ") else dispText = #active .. " Selected" end
                         end
-                        
                         Lib.Label(vector.create(nmX, cy+4, z+3), Lib.FitText(item.name, 120), Lib.Theme.Text, false, contentAlpha)
                         Lib.Label(vector.create(valX-(7*#dispText)-15, cy+4, z+3), dispText, Lib.Theme.Accent, false, contentAlpha)
-                        
-                        local triC = item.open and Lib.Theme.Accent or Lib.Theme.TextDim
-                        local cx, cy_c = valX-5, cy+10
-                        if item.open then
-                            Lib.Triangle(vector.create(cx, cy_c-3, z+3), vector.create(cx-4, cy_c+2, z+3), vector.create(cx+4, cy_c+2, z+3), triC, contentAlpha)
-                        else
-                            Lib.Triangle(vector.create(cx, cy_c+3, z+3), vector.create(cx-4, cy_c-2, z+3), vector.create(cx+4, cy_c-2, z+3), triC, contentAlpha)
-                        end
-                        
+                        local triC = item.open and Lib.Theme.Accent or Lib.Theme.TextDim; local cx, cy_c = valX-5, cy+10
+                        if item.open then Lib.Triangle(vector.create(cx, cy_c-3, z+3), vector.create(cx-4, cy_c+2, z+3), vector.create(cx+4, cy_c+2, z+3), triC, contentAlpha)
+                        else Lib.Triangle(vector.create(cx, cy_c+3, z+3), vector.create(cx-4, cy_c-2, z+3), vector.create(cx+4, cy_c-2, z+3), triC, contentAlpha) end
                         if item.open then
                             local dy = cy + 28
                             Lib.Rect(vector.create(sx+10, dy-2, z+4), vector.create(COL_W-20, #item.options*22 + 4, 0), Lib.Theme.Header, contentAlpha)
@@ -243,15 +256,8 @@ function Module.CreateWindow(self, props)
                                 if Lib:IsMouseOver(oPos, oSize) then
                                     Lib.Rect(oPos, oSize, Lib.Theme.Hover, contentAlpha)
                                     if click then
-                                        if item.multi then 
-                                            item.selected[opt] = not item.selected[opt]
-                                            if item.callback then item.callback(item.selected) end
-                                            if item.flag then Lib.Flags[item.flag] = item.selected end
-                                        else 
-                                            item.selected = opt; item.open = false
-                                            if item.callback then item.callback(opt) end
-                                            if item.flag then Lib.Flags[item.flag] = opt end 
-                                        end
+                                        if item.multi then item.selected[opt] = not item.selected[opt]; if item.callback then item.callback(item.selected) end; if item.flag then Lib.Flags[item.flag] = item.selected end
+                                        else item.selected = opt; item.open = false; if item.callback then item.callback(opt) end; if item.flag then Lib.Flags[item.flag] = opt end end
                                     end
                                 end
                                 local isSel = false; if item.multi then isSel = item.selected[opt] else isSel = (item.selected == opt) end
@@ -261,20 +267,15 @@ function Module.CreateWindow(self, props)
                             iH = iH + (#item.options * 22) + 6
                         end
                     elseif item.type == "button" then
-                        if item.anim.hover > 0.01 then
-                            Lib.Rect(vector.create(sx+8, cy+2, z+2), vector.create(COL_W-16, 20, 0), Lib.Theme.Hover, item.anim.hover * contentAlpha)
-                        end
+                        if item.anim.hover > 0.01 then Lib.Rect(vector.create(sx+8, cy+2, z+2), vector.create(COL_W-16, 20, 0), Lib.Theme.Hover, item.anim.hover * contentAlpha) end
                         Lib.Outline(vector.create(sx+8, cy+2, z+2), vector.create(COL_W-16, 20, 0), Lib.Theme.Border, contentAlpha)
                         if iClick and item.callback then item.callback() end
-                        
                         local txtCol = Lib.LerpColor(Lib.Theme.Text, Lib.Theme.Accent, item.anim.hover)
                         Lib.Label(vector.create(nmX, cy+4, z+3), item.name, txtCol, false, contentAlpha)
-                    
                     elseif item.type == "colorpicker" then
                         if iClick then item.open = not item.open end
                         Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
                         Lib.Rect(vector.create(valX - 20, cy + 6, z+3), vector.create(20, 10, 0), item.color, contentAlpha)
-                        
                         if item.open then
                             local py = cy + 28
                             local function slider(c, v, m)
@@ -293,30 +294,22 @@ function Module.CreateWindow(self, props)
                             local g = slider("G", math.floor(item.color.G*255), 255)
                             local b = slider("B", math.floor(item.color.B*255), 255)
                             local nc = Color3.fromRGB(r,g,b)
-                            if nc ~= item.color then 
-                                item.color = nc
-                                if item.callback then item.callback(nc) end
-                                if item.flag then Lib.Flags[item.flag] = {R=nc.R, G=nc.G, B=nc.B} end 
-                            end
+                            if nc ~= item.color then item.color = nc; if item.callback then item.callback(nc) end; if item.flag then Lib.Flags[item.flag] = {R=nc.R, G=nc.G, B=nc.B} end end
                             iH = iH + 75
                         end
                     elseif item.type == "binder" then
                         if iClick then item.listening = not item.listening end
-                        -- Simple binder logic: if listening, capture next key
                         if item.listening then
                             local keys = getpressedkeys()
                             if keys then
                                 for _, k in ipairs(keys) do
                                     if k ~= "Unknown" and k ~= "LeftMouse" then
-                                        item.key = k
-                                        item.listening = false
-                                        if item.callback then item.callback(k) end
-                                        if item.flag then Lib.Flags[item.flag] = k end
+                                        item.key = k; item.listening = false
+                                        if item.callback then item.callback(k) end; if item.flag then Lib.Flags[item.flag] = k end
                                     end
                                 end
                             end
                         end
-
                         local txt = "[" .. (item.listening and "?" or item.key) .. "]"
                         local keyW = (7 * #txt)
                         Lib.Label(vector.create(nmX, cy + 4, z+3), Lib.FitText(item.name, 230 - keyW), Lib.Theme.Text, false, contentAlpha)
@@ -351,7 +344,6 @@ function Module.CreateWindow(self, props)
 end
 
 function Module.Init(self)
-    -- DO NOT OVERWRITE self.State here (it comes from Main)
     local ren = game:GetService("RunService").Render
     
     ren:Connect(function()
@@ -368,14 +360,48 @@ function Module.Init(self)
             self.Line(line.A, line.B, self.Theme.SnapLine, line.Alpha, 2)
         end
         
-        -- Watermark Logic (Basic version for completeness)
+        -- EDIT MODE BANNER (RESTORED)
+        if self.State.EditMode and self.State.Enabled and self.State.MenuAlpha > 0.01 then
+            local st = "LAYOUT EDITOR ENABLED"
+            local sw = 7 * #st
+            local sp = vector.create((self.State.ScreenSize.x/2)-(sw/2), 10, self.Layer.Notif)
+            
+            self.Rect(vector.create(sp.x-8, sp.y-4, 0), vector.create(sw+16, 22, 0), self.Theme.Background, 0.9 * self.State.MenuAlpha)
+            self.Outline(vector.create(sp.x-8, sp.y-4, 0), vector.create(sw+16, 22, 0), self.Theme.EditModeText, 1 * self.State.MenuAlpha)
+            self.Label(sp, st, self.Theme.EditModeText, false, 1 * self.State.MenuAlpha)
+        end
+        
+        -- WATERMARK
         if self.State.Watermark.Visible and self.State.Enabled then
              local p, t = self.State.Watermark.Pos, self.State.Watermark.Text
              local w = (7*#t)+20
-             self.Rect(p, vector.create(w, 24, 0), self.Theme.Border, self.State.MenuAlpha)
-             self.Rect(vector.create(p.x+1,p.y+1,1), vector.create(w-2, 22, 0), self.Theme.Background, self.State.MenuAlpha)
-             self.Rect(p, vector.create(2,24,0), self.Theme.Accent, self.State.MenuAlpha)
-             self.Label(vector.create(p.x+10,p.y+5,3), t, self.Theme.Text, false, self.State.MenuAlpha)
+             local alpha = self.State.MenuAlpha
+             
+             -- Handle Dragging for Watermark
+             if self.State.EditMode and self.State.MouseDown and not self.State.MouseHeld and self:IsMouseOver(p, vector.create(w, 24, 0)) then
+                 self.State.Watermark.Dragging = true
+                 self.State.Watermark.Offset = vector.create(self.State.MousePos.x - p.x, self.State.MousePos.y - p.y, 0)
+             end
+             
+             if self.State.Watermark.Dragging then
+                 if self.State.MouseDown then
+                     local raw = vector.create(self.State.MousePos.x - self.State.Watermark.Offset.x, self.State.MousePos.y - self.State.Watermark.Offset.y, 0)
+                     local dummy = { pos = raw, size = vector.create(w, 24, 0) }
+                     -- Snap
+                     if self.CalculateDragSnap then
+                         self.State.Watermark.Pos = self:CalculateDragSnap(dummy, raw)
+                     else
+                         self.State.Watermark.Pos = raw
+                     end
+                 else
+                     self.State.Watermark.Dragging = false
+                 end
+             end
+
+             self.Rect(p, vector.create(w, 24, 0), self.Theme.Border, alpha)
+             self.Rect(vector.create(p.x+1,p.y+1,1), vector.create(w-2, 22, 0), self.Theme.Background, alpha)
+             self.Rect(p, vector.create(2,24,0), self.Theme.Accent, alpha)
+             self.Label(vector.create(p.x+10,p.y+5,3), t, self.Theme.Text, false, alpha)
         end
     end)
     

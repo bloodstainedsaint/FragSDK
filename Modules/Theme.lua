@@ -13,10 +13,13 @@ Module.Theme = {
     SnapLine     = Color3.fromRGB(98, 114, 255),
     Negative     = Color3.fromRGB(255, 85, 85),
     SwitchBg     = Color3.fromRGB(50, 50, 60),
+    ResizeHandle = Color3.fromRGB(255, 255, 255),
+    EditModeText = Color3.fromRGB(255, 180, 50),
+    InfoWinBg    = Color3.fromRGB(25, 25, 30),
     TooltipBg    = Color3.fromRGB(25, 25, 30),
     Divider      = Color3.fromRGB(60, 60, 70)
 }
 
-Module.Layer = { Base=1, Section=2, Item=3, Widget=10, Popup=50, Tooltip=200, Notif=300 }
+Module.Layer = { Base=1, Section=2, Item=3, Text=4, Widget=10, Popup=50, InfoWin=150, Tooltip=200, Snap=250, Notif=300 }
 
 return Module

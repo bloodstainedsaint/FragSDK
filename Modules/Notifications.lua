@@ -1,9 +1,10 @@
 local Module = {}
 
-Module.NotifyQueue = {}
+Module.Notifications = {} -- Container for queue
 
 function Module.Notify(self, msg, duration) 
-    table.insert(self.NotifyQueue, {
+    if not self.Notifications.Queue then self.Notifications.Queue = {} end
+    table.insert(self.Notifications.Queue, {
         id = os.clock()..math.random(), 
         text = msg, 
         duration = duration or 3, 
@@ -14,11 +15,12 @@ function Module.Notify(self, msg, duration)
 end
 
 function Module.RenderNotifications(self)
+    if not self.Notifications.Queue then return end
     local dt = self.State.DeltaTime
     local startY = 60
     
-    for i = #self.NotifyQueue, 1, -1 do
-        local n = self.NotifyQueue[i]
+    for i = #self.Notifications.Queue, 1, -1 do
+        local n = self.Notifications.Queue[i]
         local el = os.clock() - n.start
         local rem = n.duration - el
         
@@ -27,7 +29,7 @@ function Module.RenderNotifications(self)
         
         if rem <= 0 then 
             n.alpha = self.Lerp(n.alpha, 0, dt * 15)
-            if n.alpha < 0.05 then table.remove(self.NotifyQueue, i) end
+            if n.alpha < 0.05 then table.remove(self.Notifications.Queue, i) end
         end
         
         if rem > 0 or n.alpha > 0.05 then

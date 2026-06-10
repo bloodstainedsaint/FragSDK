@@ -10,7 +10,7 @@ function Module.InitState()
         ToggleKey = "Delete", LastToggle = 0,
         ActiveTooltip = nil, ActivePopup = nil, 
         ScreenSize = vector.create(1920, 1080, 0),
-        Watermark = { Visible = true, Text = "Severe UI", Extra = true, Pos = vector.create(60, 60, 0), Dragging = false, Offset = vector.create(0,0,0), Pinned = true },
+        Watermark = { Visible = true, Text = "FragSDK", Extra = true, Pos = vector.create(60, 60, 0), Dragging = false, Offset = vector.create(0,0,0), Pinned = true },
         InputBusy = false,
         Snapping = { ActiveLines = {} },
         LastTick = 0, FrameCount = 0, CurrentFPS = 60,

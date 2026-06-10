@@ -13,7 +13,6 @@ function Module.InitState()
         Watermark = { Visible = true, Text = "FragSDK", Extra = true, Pos = vector.create(60, 60, 0), Dragging = false, Offset = vector.create(0,0,0), Pinned = true },
         InputBusy = false,
         Snapping = { ActiveLines = {} },
-        LastTick = 0, FrameCount = 0, CurrentFPS = 60,
         MenuAlpha = 1, DeltaTime = 0, LastRender = os.clock(),
     }
 end
@@ -59,11 +58,6 @@ function Module.UpdateInput(self)
     local targetAlpha = self.State.Enabled and 1 or 0
     self.State.MenuAlpha = self.Lerp(self.State.MenuAlpha, targetAlpha, 10 * self.State.DeltaTime)
     if math.abs(self.State.MenuAlpha - targetAlpha) < 0.01 then self.State.MenuAlpha = targetAlpha end
-    
-    self.State.FrameCount = self.State.FrameCount + 1
-    if (os.clock() - self.State.LastTick) >= 1 then
-        self.State.CurrentFPS = self.State.FrameCount; self.State.FrameCount = 0; self.State.LastTick = os.clock()
-    end
 end
 
 function Module.IsMouseOver(self, pos, size)

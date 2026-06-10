@@ -364,7 +364,8 @@ function Module.CreateWindow(self, props)
                                 end
                                 Lib.Label(vector.create(sx+20, py, z+4), c, Lib.Theme.TextDim, false, contentAlpha)
                                 Lib.Rect(vector.create(sx+40, py+6, z+4), vector.create(150, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
-                                Lib.Rect(vector.create(sx+40+(v/m)*150, py+7, z+5), 3, Lib.Theme.Text, contentAlpha)
+                                Lib.Rect(vector.create(sx+40, py+6, z+4), vector.create((v/m)*150, 2, 0), Lib.Theme.Accent, contentAlpha)
+                                Lib.Circle(vector.create(sx+40+(v/m)*150, py+7, z+5), 3, Lib.Theme.Text, contentAlpha)
                                 py = py + 20
                                 return v
                             end
@@ -437,6 +438,11 @@ function Module.Init(self)
                 table.insert(self.Windows, self.FocusedWindow)
             end
             self.FocusedWindow = nil
+        end
+
+        if self.FocusedWidget then
+            self:BringToFront(self.FocusedWidget)
+            self.FocusedWidget = nil
         end
 
         if not self.State.ContextMenu then
@@ -525,12 +531,12 @@ function Module.Init(self)
              
              if self.State.EditMode and self.State.MouseDown and not self.State.MouseHeld and self:IsMouseOver(p, vector.create(w, 24, 0)) then
                  self.State.Watermark.Dragging = true
-                 self.State.Watermark.Offset = vector.create(self.State.MousePos.x - p.x, self.State.Watermark.Offset.y, 0)
+                 self.State.Watermark.Offset = vector.create(self.State.MousePos.x - p.x, self.State.MousePos.y - p.y, 0)
              end
              
              if self.State.Watermark.Dragging then
                  if self.State.MouseDown then
-                     local raw = vector.create(self.State.MousePos.x - self.State.Watermark.Offset.x, self.State.Watermark.Offset.y, 0)
+                     local raw = vector.create(self.State.MousePos.x - self.State.Watermark.Offset.x, self.State.MousePos.y - self.State.Watermark.Offset.y, 0)
                      local dummy = { pos = raw, size = vector.create(w, 24, 0) }
                      if self.CalculateDragSnap then
                          self.State.Watermark.Pos = self:CalculateDragSnap(dummy, raw)

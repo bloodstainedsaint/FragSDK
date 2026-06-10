@@ -1,6 +1,4 @@
 --[[
-FragSDK Documentation
-
 Main Functions:
 
 * Frag:Init()
@@ -68,11 +66,9 @@ State Options:
 * Frag.State.Watermark.Text = string -- Sets watermark text
 ]]
 
--- [ FragSDK | Main Loader ]
 local Frag = {}
 Frag.__index = Frag
 
--- Github Configuration
 local Repo = "https://raw.githubusercontent.com/bloodstainedsaint/FragSDK/refs/heads/main/"
 local Modules = {
     "Theme",

@@ -7,6 +7,8 @@ Module.Widgets = {}
 
 local WIN_W, COL_W = 560, 265
 local DEFAULT_MAX_H = 700
+local SLIDER_LABEL_W = 120
+local SLIDER_W = 100
 
 function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
     local maxChars = math.max(1, math.floor(maxWidth / 7))
@@ -256,7 +258,7 @@ function Module.CreateWindow(self, props)
                 local h = 28
                 for _, it in ipairs(s.items) do
                     local add = 28 
-                    if it.type == "slider" then add = 60 end
+                    if it.type == "slider" then add = ((#it.name * 7) > SLIDER_LABEL_W) and 46 or 28 end
                     if it.type == "dropdown" and it.open then add = add + (#it.options * 22) + 6 end
                     if it.type == "colorpicker" and it.open then add = add + 75 end
                     h = h + add
@@ -344,7 +346,7 @@ function Module.CreateWindow(self, props)
                 local sh = 28
                 for _, it in ipairs(sect.items) do
                     local add = 28
-                    if it.type == "slider" then add = 60 end
+                    if it.type == "slider" then add = ((#it.name * 7) > SLIDER_LABEL_W) and 46 or 28 end
                     if it.type=="dropdown" and it.open then add=add+(#it.options*22)+6 end
                     if it.type=="colorpicker" and it.open then add=add+75 end
                     sh = sh + add
@@ -365,7 +367,7 @@ function Module.CreateWindow(self, props)
                     if not item.anim then item.anim = { slide = 0, hover = 0 } end
                     local nmX, valX = sx+10, sx+COL_W-15
                     local iH = 28
-                    if item.type == "slider" then iH = 60 end
+                    if item.type == "slider" then iH = ((#item.name * 7) > SLIDER_LABEL_W) and 46 or 28 end
                     if item.type == "dropdown" and item.open then iH = iH + (#item.options * 22) + 6 end
                     if item.type == "colorpicker" and item.open then iH = iH + 75 end
                     local itemVisible = cy + iH >= contentTop and cy <= contentBottom
@@ -392,9 +394,16 @@ function Module.CreateWindow(self, props)
 
                     elseif itemVisible and item.type == "slider" then
                         local valStr = tostring(item.value); local valW = 7 * #valStr
-                        local barW = 100; local barX = valX - valW - 15 - barW
-                        local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, COL_W - 20, false, contentAlpha)
-                        local controlY = cy + 32
+                        local barW = SLIDER_W
+                        local barX = sx + COL_W - barW - 15
+                        local isLongLabel = (#item.name * 7) > SLIDER_LABEL_W
+                        local labelLines = 1
+                        if isLongLabel then
+                            labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, SLIDER_LABEL_W, false, contentAlpha)
+                        else
+                            Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
+                        end
+                        local controlY = isLongLabel and (cy + 18) or cy
                         local barY = controlY + 10
                         local sliderPos = vector.create(sx+4, controlY-2, 0)
                         local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W-8, 24, 0))

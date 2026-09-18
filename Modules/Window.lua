@@ -491,6 +491,14 @@ function Module.CreateWindow(self, props)
                             iH = iH + 75
                         end
                     elseif itemVisible and item.type == "binder" then
+                        if Lib.State.RightMouseDown and not Lib.State.RightMouseHeld and not Lib.State.ContextMenu.IsOpen and hover then
+                            Lib.State.ContextMenu = {
+                                IsOpen = true,
+                                Pos = Lib.State.MousePos,
+                                Target = item,
+                                Type = "binderMode"
+                            }
+                        end
                         if iClick then item.listening = not item.listening end
                         if item.listening then
                             local keys = getpressedkeys()
@@ -504,6 +512,7 @@ function Module.CreateWindow(self, props)
                             end
                         end
                         local txt = "[" .. (item.listening and "?" or item.key) .. "]"
+                        txt = txt .. " " .. (item.mode or "Toggle")
                         local keyW = (7 * #txt)
                         local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, valX - nmX - keyW - 10, false, contentAlpha)
                         if labelLines > 1 then iH = 46 end
@@ -561,7 +570,23 @@ function Module.CreateWindow(self, props)
             function sec:Dropdown(p) local sel = p.Default; if p.Multi and type(sel) ~= "table" then sel = {}; end table.insert(sec.items, {type="dropdown", name=p.Name, options=p.Options, selected=sel, open=false, multi=p.Multi, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = sel end end
             function sec:Button(p) table.insert(sec.items, {type="button", name=p.Name, callback=p.Callback}) end
             function sec:ColorPicker(p) local c = p.Default or Color3.new(1,1,1); table.insert(sec.items, {type="colorpicker", name=p.Name, color=c, open=false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = {R=c.R, G=c.G, B=c.B} end end
-            function sec:Binder(p) table.insert(sec.items, {type="binder", name=p.Name, key=p.Default or "None", listening=false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or "None" end end
+            function sec:Binder(p)
+                local mode = (p.Mode == "Hold" or p.Mode == "Tap") and p.Mode or "Toggle"
+                local item = {
+                    type="binder",
+                    name=p.Name,
+                    key=p.Default or "None",
+                    mode=mode,
+                    active=false,
+                    wasPressed=false,
+                    listening=false,
+                    callback=p.Callback,
+                    actionCallback=p.ActionCallback,
+                    flag=p.Flag
+                }
+                table.insert(sec.items, item)
+                if p.Flag then Lib.Flags[p.Flag] = {Key=item.key, Mode=item.mode, Active=false} end
+            end
             table.insert(pg.sections, sec)
             return sec
         end
@@ -628,7 +653,8 @@ function Module.Init(self)
         
         if self.State.ContextMenu.IsOpen then
             local menu = self.State.ContextMenu
-            local options = {"Bring to Front", "Send to Back", "Bring Forward", "Send Backward"}
+            local isBinderMenu = menu.Type == "binderMode"
+            local options = isBinderMenu and {"Toggle", "Hold", "Tap"} or {"Bring to Front", "Send to Back", "Bring Forward", "Send Backward"}
             local menuSize = vector.create(150, (#options * 22) + 10, 0)
             local z = self.Layer.Popup
             local click = self.State.MouseDown and not self.State.MouseHeld
@@ -644,7 +670,18 @@ function Module.Init(self)
                 if hover then
                     self.Rect(optPos, vector.create(menuSize.x - 10, 20, 0), self.Theme.Hover, 1)
                     if click then
-                        if opt == "Bring to Front" then self:BringToFront(menu.Target)
+                        if isBinderMenu then
+                            menu.Target.mode = opt
+                            menu.Target.active = false
+                            menu.Target.wasPressed = false
+                            if menu.Target.flag then
+                                self.Flags[menu.Target.flag] = {
+                                    Key = menu.Target.key,
+                                    Mode = opt,
+                                    Active = false
+                                }
+                            end
+                        elseif opt == "Bring to Front" then self:BringToFront(menu.Target)
                         elseif opt == "Send to Back" then self:SendToBack(menu.Target)
                         elseif opt == "Bring Forward" then self:BringForward(menu.Target)
                         elseif opt == "Send Backward" then self:SendBackward(menu.Target) end

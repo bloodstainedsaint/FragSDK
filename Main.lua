@@ -11,9 +11,11 @@ Main Functions:
   
 * Frag:CreateWindow(config)
   Creates the main UI window.
-  - config: { Name = string, Position = vector, ToggleKey = string, MaxHeight = number }
+  - config: { Name = string, Info = string|function, Position = vector, ToggleKey = string, MaxHeight = number }
   - MaxHeight: Maximum visible window height. Defaults to 700 pixels.
     Content exceeding this height is available through a draggable scrollbar.
+  - Info: Optional compact status bar above the major page tabs. A function is
+    called while drawing so it can return dynamic text such as a time/status.
   
 * window:Page(config)
   Adds a tab page to the window.

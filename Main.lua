@@ -114,6 +114,11 @@ CONFIGURATION TAB
   and refresh controls.
   - config.Name: page name, defaults to "Configs"
   - config.Folder: storage folder, defaults to "FragSDK/Configs"
+  - config.PerGame: separates configs by game.GameId, defaults to true
+  - config.GameId: optional explicit game ID override
+
+  With per-game storage enabled, configs are stored under:
+  Folder/GameId/config.json
 
 Example:
   Frag:AddConfigTab(mainWindow, { Folder = "MyTool/Configs" })

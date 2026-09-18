@@ -390,6 +390,19 @@ function Module.CreateWindow(self, props)
                 or section.subcategory == page.activeSubcategory
         end
 
+        local function clearPageCapture(targetPage)
+            if not targetPage then return end
+            for _, targetSection in ipairs(targetPage.sections) do
+                for _, targetItem in ipairs(targetSection.items) do
+                    targetItem.dragging = nil
+                    targetItem.editing = false
+                    targetItem.keyState = {}
+                    targetItem.repeatKey = nil
+                    targetItem.repeatAt = nil
+                end
+            end
+        end
+
         local x, y, z = self.pos.x, self.pos.y, Lib.Layer.Base
         local subBarWidth = WIN_W - 24
         local subTotalWidth = 0
@@ -471,10 +484,23 @@ function Module.CreateWindow(self, props)
         Lib.Label(vector.create(x+12,y+10,z+1), self.name, Lib.Theme.Text, false, winAlpha)
         Lib.Line(vector.create(x+1,y+34,z), vector.create(x+WIN_W-1,y+34,z), Lib.Theme.Border, winAlpha, 1)
 
-        local tx = 130 
+        local pageTabTotal = 0
+        for _, pg in ipairs(self.pages) do
+            pageTabTotal = pageTabTotal + (7 * #pg.name) + 20
+        end
+        local pageTabLeft = x + math.max(110, 12 + (7 * #self.name) + 20)
+        local pageTabRight = x + WIN_W - 12
+        local pageTabAreaWidth = pageTabRight - pageTabLeft
+        local tx = pageTabLeft + math.max(0, (pageTabAreaWidth - pageTabTotal) / 2)
         for i, pg in ipairs(self.pages) do
             local w = (7*#pg.name)+20
-            if click and not occluded and Lib:IsMouseOver(vector.create(x+tx,y+1,0), vector.create(w,34,0)) then self.activePage = i end
+            if click and not occluded and Lib:IsMouseOver(vector.create(x+tx,y+1,0), vector.create(w,34,0)) then
+                if self.activePage ~= i then
+                    clearPageCapture(self.pages[self.activePage])
+                    self.activePage = i
+                    self.scroll = 0
+                end
+            end
             
             local isActive = (self.activePage == i)
             Lib.Label(vector.create(x+tx+10,y+10,z+1), pg.name, isActive and Lib.Theme.Accent or Lib.Theme.TextDim, false, winAlpha)
@@ -491,6 +517,7 @@ function Module.CreateWindow(self, props)
                 local sw = subWidths[index]
                 local subPos = vector.create(stx, y+36, 0)
                 if click and not occluded and Lib:IsMouseOver(subPos, vector.create(sw, 22, 0)) then
+                    clearPageCapture(page)
                     page.activeSubcategory = sub.name
                     self.scroll = 0
                 end

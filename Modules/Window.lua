@@ -82,6 +82,75 @@ end
 local TEXTBOX_BACKSPACE_INITIAL_DELAY = 0.25
 local TEXTBOX_BACKSPACE_REPEAT_RATE = 0.08
 
+local function snapSliderValue(value, minValue, maxValue, step)
+    value = math.clamp(value, minValue, maxValue)
+    step = step or 1
+    value = minValue + (math.round((value - minValue) / step) * step)
+    return math.clamp(value, minValue, maxValue)
+end
+
+local function finishNumericEdit(item, commit)
+    local ok = commit(item.editText or "")
+    if ok then
+        item.editing = false
+        item.keyState = {}
+        item.repeatKey = nil
+        item.repeatAt = nil
+    end
+end
+
+local function updateNumericEdit(item, now, commit)
+    local pressed = getpressedkeys()
+    if not pressed then
+        item.keyState = {}
+        return
+    end
+
+    local current = {}
+    local shift = false
+    for _, key in ipairs(pressed) do
+        if key == "LeftShift" or key == "RightShift" then shift = true end
+    end
+
+    for _, key in ipairs(pressed) do
+        current[key] = true
+        local mapped = textFromKey(key, shift)
+        if not item.keyState[key] then
+            if mapped == "BACKSPACE" then
+                if item.editCursor > 1 then
+                    item.editText = string.sub(item.editText, 1, item.editCursor - 2) .. string.sub(item.editText, item.editCursor)
+                    item.editCursor = item.editCursor - 1
+                end
+                item.repeatKey = key
+                item.repeatAt = now + TEXTBOX_BACKSPACE_INITIAL_DELAY
+            elseif mapped == "ENTER" then
+                finishNumericEdit(item, commit)
+            elseif mapped == "ESCAPE" then
+                item.editing = false
+            elseif mapped == "LEFT" then
+                item.editCursor = math.max(1, item.editCursor - 1)
+            elseif mapped == "RIGHT" then
+                item.editCursor = math.min(#item.editText + 1, item.editCursor + 1)
+            elseif mapped and #mapped == 1 and mapped:match("^[%d%.%-%+]+$") then
+                item.editText = string.sub(item.editText, 1, item.editCursor - 1) .. mapped .. string.sub(item.editText, item.editCursor)
+                item.editCursor = item.editCursor + 1
+            end
+        elseif key == item.repeatKey and mapped == "BACKSPACE" and now >= (item.repeatAt or math.huge) then
+            if item.editCursor > 1 then
+                item.editText = string.sub(item.editText, 1, item.editCursor - 2) .. string.sub(item.editText, item.editCursor)
+                item.editCursor = item.editCursor - 1
+            end
+            item.repeatAt = now + TEXTBOX_BACKSPACE_REPEAT_RATE
+        end
+    end
+
+    item.keyState = current
+    if item.repeatKey and not current[item.repeatKey] then
+        item.repeatKey = nil
+        item.repeatAt = nil
+    end
+end
+
 function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
     local maxChars = math.max(1, math.floor(maxWidth / 7))
     local lines = {}
@@ -495,9 +564,29 @@ function Module.CreateWindow(self, props)
                         end
                         local controlY = sliderLayout.topLabel and (cy + 18) or cy
                         local barY = controlY + 10
+                        local valueBoxPos = vector.create(valueStart - 4, controlY, z + 4)
+                        local valueBoxSize = vector.create(SLIDER_VALUE_W + 8, 20, 0)
+                        if click and Lib:IsMouseOver(valueBoxPos, valueBoxSize) then
+                            item.editing = true
+                            item.editText = tostring(item.value)
+                            item.editCursor = #item.editText + 1
+                            item.keyState = {}
+                            Lib.State.InputBusy = true
+                        end
+                        if item.editing then
+                            updateNumericEdit(item, os.clock(), function(text)
+                                local number = tonumber(text)
+                                if not number then return false end
+                                number = snapSliderValue(number, item.min, item.max, 1)
+                                item.value = number
+                                if item.callback then item.callback(number) end
+                                if item.flag then Lib.Flags[item.flag] = number end
+                                return true
+                            end)
+                        end
                         local sliderPos = vector.create(barX - 8, barY - 8, 0)
                         local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(barW + 16, 16, 0))
-                        if sliderHover and isleftpressed() and not Lib.State.InputBusy then
+                        if not item.editing and sliderHover and isleftpressed() and not Lib.State.InputBusy then
                             local bx = barX
                             local pct = math.clamp((Lib.State.MousePos.x - bx) / barW, 0, 1)
                             local nv = math.floor(item.min + (item.max - item.min) * pct)
@@ -511,7 +600,18 @@ function Module.CreateWindow(self, props)
                         else
                             Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
                         end
-                        Lib.Label(vector.create(valueStart + ((SLIDER_VALUE_W - valW) / 2), controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
+                        if item.editing then
+                            Lib.Rect(valueBoxPos, valueBoxSize, Lib.Theme.Accent, contentAlpha)
+                            Lib.Rect(vector.create(valueBoxPos.x + 1, valueBoxPos.y + 1, z + 3), vector.create(valueBoxSize.x - 2, valueBoxSize.y - 2, 0), Lib.Theme.Header, contentAlpha)
+                            local maxChars = math.max(1, math.floor((valueBoxSize.x - 8) / 7))
+                            local startChar = math.max(1, math.min(item.editCursor - maxChars, #item.editText - maxChars + 1))
+                            local visibleText = string.sub(item.editText, startChar, startChar + maxChars - 1)
+                            Lib.Label(vector.create(valueBoxPos.x + 4, valueBoxPos.y + 4, z + 4), visibleText, Lib.Theme.Text, false, contentAlpha)
+                            local caret = math.max(0, item.editCursor - startChar)
+                            Lib.Rect(vector.create(valueBoxPos.x + 4 + (caret * 7), valueBoxPos.y + 3, z + 4), vector.create(1, 14, 0), Lib.Theme.Accent, contentAlpha)
+                        else
+                            Lib.Label(vector.create(valueStart + ((SLIDER_VALUE_W - valW) / 2), controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
+                        end
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetFill, dt * 15)
@@ -528,6 +628,29 @@ function Module.CreateWindow(self, props)
                         end
                         local controlY = sliderLayout.topLabel and (cy + 18) or cy
                         local barY = controlY + 10
+                        local valueBoxPos = vector.create(valueStart - 4, controlY, z + 4)
+                        local valueBoxSize = vector.create(RANGE_VALUE_W + 8, 20, 0)
+                        if click and Lib:IsMouseOver(valueBoxPos, valueBoxSize) then
+                            item.editing = true
+                            item.editText = tostring(item.lower) .. "-" .. tostring(item.upper)
+                            item.editCursor = #item.editText + 1
+                            item.keyState = {}
+                            Lib.State.InputBusy = true
+                        end
+                        if item.editing then
+                            updateNumericEdit(item, os.clock(), function(text)
+                                local minText, maxText = text:match("^%s*([%+%-]?[%d%.]+)%s*[-:, ]%s*([%+%-]?[%d%.]+)%s*$")
+                                local minValue, maxValue = tonumber(minText), tonumber(maxText)
+                                if not minValue or not maxValue then return false end
+                                minValue = snapSliderValue(minValue, item.min, item.max, item.step)
+                                maxValue = snapSliderValue(maxValue, item.min, item.max, item.step)
+                                if minValue >= maxValue then return false end
+                                item.lower, item.upper = minValue, maxValue
+                                if item.callback then item.callback(minValue, maxValue) end
+                                if item.flag then Lib.Flags[item.flag] = {Min = minValue, Max = maxValue} end
+                                return true
+                            end)
+                        end
                         local range = math.max(item.max - item.min, item.step)
                         local minPct = math.clamp((item.lower - item.min) / range, 0, 1)
                         local maxPct = math.clamp((item.upper - item.min) / range, 0, 1)
@@ -543,7 +666,7 @@ function Module.CreateWindow(self, props)
                             return math.clamp(snapped, item.min, item.max)
                         end
 
-                        if click and sliderHover then
+                        if not item.editing and click and sliderHover then
                             local mouseX = Lib.State.MousePos.x
                             item.dragging = math.abs(mouseX - minX) <= math.abs(mouseX - maxX) and "lower" or "upper"
                         end
@@ -567,7 +690,18 @@ function Module.CreateWindow(self, props)
                         else
                             Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
                         end
-                        Lib.Label(vector.create(valueStart, controlY+4, z+3), tostring(item.lower) .. "-" .. tostring(item.upper), Lib.Theme.TextDim, false, contentAlpha)
+                        if item.editing then
+                            Lib.Rect(valueBoxPos, valueBoxSize, Lib.Theme.Accent, contentAlpha)
+                            Lib.Rect(vector.create(valueBoxPos.x + 1, valueBoxPos.y + 1, z + 3), vector.create(valueBoxSize.x - 2, valueBoxSize.y - 2, 0), Lib.Theme.Header, contentAlpha)
+                            local maxChars = math.max(1, math.floor((valueBoxSize.x - 8) / 7))
+                            local startChar = math.max(1, math.min(item.editCursor - maxChars, #item.editText - maxChars + 1))
+                            local visibleText = string.sub(item.editText, startChar, startChar + maxChars - 1)
+                            Lib.Label(vector.create(valueBoxPos.x + 4, valueBoxPos.y + 4, z + 4), visibleText, Lib.Theme.Text, false, contentAlpha)
+                            local caret = math.max(0, item.editCursor - startChar)
+                            Lib.Rect(vector.create(valueBoxPos.x + 4 + (caret * 7), valueBoxPos.y + 3, z + 4), vector.create(1, 14, 0), Lib.Theme.Accent, contentAlpha)
+                        else
+                            Lib.Label(vector.create(valueStart, controlY+4, z+3), tostring(item.lower) .. "-" .. tostring(item.upper), Lib.Theme.TextDim, false, contentAlpha)
+                        end
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         Lib.Rect(vector.create(minX, barY, z+3), vector.create(math.max(1, maxX-minX), 2, 0), Lib.Theme.Accent, contentAlpha)
                         Lib.Circle(vector.create(minX, barY+1, z+4), 4, Lib.Theme.Text, contentAlpha)

@@ -607,15 +607,6 @@ function Module.CreateWindow(self, props)
 end
 
 function Module.Init(self)
-    local userInputService = game:GetService("UserInputService")
-    pcall(function()
-        userInputService.InputChanged:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseWheel then
-                self.State.WheelInput += input.Position.Z
-            end
-        end)
-    end)
-
     local ren = game:GetService("RunService").Render
     
     ren:Connect(function()

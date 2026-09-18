@@ -390,6 +390,32 @@ function Module.CreateWindow(self, props)
                 or section.subcategory == page.activeSubcategory
         end
 
+        local subBarWidth = WIN_W - 24
+        local subTotalWidth = 0
+        local subWidths = {}
+        if hasSubcategories then
+            for index, sub in ipairs(page.subcategories) do
+                subWidths[index] = (7 * #sub.name) + 20
+                subTotalWidth = subTotalWidth + subWidths[index]
+            end
+        end
+        local subScrollMax = math.max(0, subTotalWidth - subBarWidth)
+        page.subScroll = math.clamp(page.subScroll or 0, 0, subScrollMax)
+        local subBarHover = hasSubcategories and Lib:IsMouseOver(
+            vector.create(x + 12, y + 35, 0),
+            vector.create(subBarWidth, 24, 0)
+        )
+        if subScrollMax > 0 and subBarHover and Lib.State.MouseWheel ~= 0 then
+            page.subScroll = math.clamp(page.subScroll - (Lib.State.MouseWheel * 42), 0, subScrollMax)
+            Lib.State.InputBusy = true
+        end
+        local function subcategoryStart()
+            if subScrollMax > 0 then
+                return x + 12 - page.subScroll
+            end
+            return x + 12 + ((subBarWidth - subTotalWidth) / 2)
+        end
+
         local contentStart = hasSubcategories and 82 or 55
         local lY, rY = contentStart, contentStart
         
@@ -460,9 +486,9 @@ function Module.CreateWindow(self, props)
 
         if hasSubcategories then
             Lib.Line(vector.create(x+1, y+58, z), vector.create(x+WIN_W-1, y+58, z), Lib.Theme.Border, winAlpha, 1)
-            local stx = x + 12
-            for _, sub in ipairs(page.subcategories) do
-                local sw = (7 * #sub.name) + 20
+            local stx = subcategoryStart()
+            for index, sub in ipairs(page.subcategories) do
+                local sw = subWidths[index]
                 local subPos = vector.create(stx, y+36, 0)
                 if click and not occluded and Lib:IsMouseOver(subPos, vector.create(sw, 22, 0)) then
                     page.activeSubcategory = sub.name
@@ -586,6 +612,14 @@ function Module.CreateWindow(self, props)
                         end
                         local sliderPos = vector.create(barX - 8, barY - 8, 0)
                         local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(barW + 16, 16, 0))
+                        local rightClick = Lib.State.RightMouseDown and not Lib.State.RightMouseHeld
+                        local rowHover = not occluded and Lib:IsMouseOver(vector.create(sx + 4, cy - 2, 0), vector.create(COL_W - 8, iH, 0))
+                        if rightClick and rowHover then
+                            item.value = item.default
+                            if item.callback then item.callback(item.value) end
+                            if item.flag then Lib.Flags[item.flag] = item.value end
+                            Lib.State.InputBusy = true
+                        end
                         if not item.editing and sliderHover and isleftpressed() and not Lib.State.InputBusy then
                             local bx = barX
                             local pct = math.clamp((Lib.State.MousePos.x - bx) / barW, 0, 1)
@@ -658,6 +692,15 @@ function Module.CreateWindow(self, props)
                         local maxX = barX + (maxPct * barW)
                         local sliderPos = vector.create(sx + 4, cy - 2, 0)
                         local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W - 8, iH, 0))
+                        local rightClick = Lib.State.RightMouseDown and not Lib.State.RightMouseHeld
+                        if rightClick and sliderHover then
+                            item.lower = item.defaultLower
+                            item.upper = item.defaultUpper
+                            item.editing = false
+                            if item.callback then item.callback(item.lower, item.upper) end
+                            if item.flag then Lib.Flags[item.flag] = {Min = item.lower, Max = item.upper} end
+                            Lib.State.InputBusy = true
+                        end
 
                         local function snapValue(mouseX)
                             local pct = math.clamp((mouseX - barX) / barW, 0, 1)
@@ -898,9 +941,9 @@ function Module.CreateWindow(self, props)
 
         if hasSubcategories then
             Lib.Line(vector.create(x+1, y+58, z+101), vector.create(x+WIN_W-1, y+58, z+101), Lib.Theme.Border, winAlpha, 1)
-            local redrawX = x + 12
-            for _, sub in ipairs(page.subcategories) do
-                local subWidth = (7 * #sub.name) + 20
+            local redrawX = subcategoryStart()
+            for index, sub in ipairs(page.subcategories) do
+                local subWidth = subWidths[index]
                 local activeSub = page.activeSubcategory == sub.name
                 Lib.Label(
                     vector.create(redrawX+10, y+41, z+102),
@@ -913,6 +956,26 @@ function Module.CreateWindow(self, props)
                     Lib.Rect(vector.create(redrawX, y+56, z+102), vector.create(subWidth, 2, 0), Lib.Theme.Accent, winAlpha)
                 end
                 redrawX = redrawX + subWidth
+            end
+
+            if subScrollMax > 0 then
+                local fadeWidth = 36
+                local fadeStep = fadeWidth / 6
+                for index = 0, 5 do
+                    local alpha = 0.82 * (1 - (index / 6))
+                    Lib.Rect(
+                        vector.create(x + 12 + (index * fadeStep), y + 35, z + 103),
+                        vector.create(fadeStep + 1, 23, 0),
+                        Lib.Theme.Background,
+                        alpha * winAlpha
+                    )
+                    Lib.Rect(
+                        vector.create(x + WIN_W - 12 - ((index + 1) * fadeStep), y + 35, z + 103),
+                        vector.create(fadeStep + 1, 23, 0),
+                        Lib.Theme.Background,
+                        alpha * winAlpha
+                    )
+                end
             end
         end
 
@@ -946,7 +1009,7 @@ function Module.CreateWindow(self, props)
     
     function window:Page(p)
         for _, pg in ipairs(self.pages) do if pg.name == p.Name then return pg end end
-        local pg = {name=p.Name, sections={}, subcategories={}, activeSubcategory=nil}
+        local pg = {name=p.Name, sections={}, subcategories={}, activeSubcategory=nil, subScroll=0}
         function pg:Subcategory(p)
             for _, sub in ipairs(self.subcategories) do
                 if sub.name == p.Name then return sub end
@@ -959,12 +1022,12 @@ function Module.CreateWindow(self, props)
         function pg:Section(p)
             local sec = {name=p.Name, side=p.Side or "Left", subcategory=p.Subcategory, items={}}
             function sec:Toggle(p) table.insert(sec.items, {type="toggle", name=p.Name, value=p.Default or false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or false end end
-            function sec:Slider(p) table.insert(sec.items, {type="slider", name=p.Name, value=p.Default or p.Min, min=p.Min, max=p.Max, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or p.Min end end
+            function sec:Slider(p) table.insert(sec.items, {type="slider", name=p.Name, value=p.Default or p.Min, default=p.Default or p.Min, min=p.Min, max=p.Max, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or p.Min end end
             function sec:RangeSlider(p)
                 local step = p.Step or 1
                 local lower = p.DefaultMin or p.Min
                 local upper = p.DefaultMax or p.Max
-                local item = {type="rangeslider", name=p.Name, min=p.Min, max=p.Max, step=step, lower=lower, upper=upper, callback=p.Callback, flag=p.Flag}
+                local item = {type="rangeslider", name=p.Name, min=p.Min, max=p.Max, step=step, lower=lower, upper=upper, defaultLower=lower, defaultUpper=upper, callback=p.Callback, flag=p.Flag}
                 table.insert(sec.items, item)
                 if p.Flag then Lib.Flags[p.Flag] = {Min=lower, Max=upper} end
                 return item

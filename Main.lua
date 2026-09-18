@@ -11,15 +11,34 @@ Main Functions:
   
 * Frag:CreateWindow(config)
   Creates the main UI window.
-  - config: { Name = string, Position = vector, ToggleKey = string }
+  - config: { Name = string, Position = vector, ToggleKey = string, MaxHeight = number }
+  - MaxHeight: Maximum visible window height. Defaults to 700 pixels.
+    Content exceeding this height is available through a draggable scrollbar.
   
 * window:Page(config)
   Adds a tab page to the window.
   - config: { Name = string }
+
+* page:Subcategory(config)
+  Adds a subcategory tab inside a page. Subcategory tabs appear below the
+  major page tabs and only show sections assigned to that subcategory.
+  - config: { Name = string }
   
 * page:Section(config)
   Adds a column container to a page.
-  - config: { Name = string, Side = "Left" or "Right" }
+  - config: { Name = string, Side = "Left" or "Right", Subcategory = string }
+  - Sections without Subcategory remain visible across all subcategories.
+
+  Example:
+    local combat = window:Page({ Name = "Combat" })
+    combat:Subcategory({ Name = "Aimbot" })
+    combat:Subcategory({ Name = "Weapon" })
+
+    local aim = combat:Section({
+        Name = "Aimbot Settings",
+        Side = "Left",
+        Subcategory = "Aimbot"
+    })
 
 * Frag:CreateDocWindow(config)
   Creates a specialized documentation window with side navigation and custom rendering.

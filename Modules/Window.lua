@@ -11,6 +11,24 @@ local SLIDER_LABEL_W = 100
 local SLIDER_W = 100
 local SLIDER_VALUE_W = 30
 
+local TextKeys = {
+    [32] = " ", [48] = "0", [49] = "1", [50] = "2", [51] = "3", [52] = "4",
+    [53] = "5", [54] = "6", [55] = "7", [56] = "8", [57] = "9",
+    [65] = "a", [66] = "b", [67] = "c", [68] = "d", [69] = "e", [70] = "f",
+    [71] = "g", [72] = "h", [73] = "i", [74] = "j", [75] = "k", [76] = "l",
+    [77] = "m", [78] = "n", [79] = "o", [80] = "p", [81] = "q", [82] = "r",
+    [83] = "s", [84] = "t", [85] = "u", [86] = "v", [87] = "w", [88] = "x",
+    [89] = "y", [90] = "z", [8] = "BACKSPACE", [13] = "ENTER"
+}
+
+local function keyToken(key)
+    if type(key) == "number" then return key end
+    if key == "Backspace" then return 8 end
+    if key == "Enter" or key == "Return" then return 13 end
+    if key == "Space" then return 32 end
+    return nil
+end
+
 function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
     local maxChars = math.max(1, math.floor(maxWidth / 7))
     local lines = {}
@@ -362,14 +380,15 @@ function Module.CreateWindow(self, props)
                     continue
                 end
 
-                local visibleSectionHeight = math.min(sh, contentBottom - sy)
+                local sectionDrawY = math.max(sy, contentTop)
+                local visibleSectionHeight = math.min(sh - (sectionDrawY - sy), contentBottom - sectionDrawY)
                 if visibleSectionHeight <= 0 then continue end
 
-                Lib.Rect(vector.create(sx,sy,z+1), vector.create(COL_W,visibleSectionHeight,0), Lib.Theme.Border, contentAlpha)
-                Lib.Rect(vector.create(sx+1,sy+1,z+1), vector.create(COL_W-2,math.max(0, visibleSectionHeight-2),0), Lib.Theme.SectionBg, contentAlpha)
-                Lib.Rect(vector.create(sx+1,sy+1,z+2), vector.create(COL_W-2, 22, 0), Lib.Theme.Header, contentAlpha)
-                Lib.Label(vector.create(sx+8,sy+5,z+3), sect.name, Lib.Theme.TextDim, false, contentAlpha)
-                Lib.Line(vector.create(sx+1,sy+23,z+2), vector.create(sx+COL_W-1,sy+23,z+2), Lib.Theme.Border, contentAlpha, 1)
+                Lib.Rect(vector.create(sx,sectionDrawY,z+1), vector.create(COL_W,visibleSectionHeight,0), Lib.Theme.Border, contentAlpha)
+                Lib.Rect(vector.create(sx+1,sectionDrawY+1,z+1), vector.create(COL_W-2,math.max(0, visibleSectionHeight-2),0), Lib.Theme.SectionBg, contentAlpha)
+                Lib.Rect(vector.create(sx+1,sectionDrawY+1,z+2), vector.create(COL_W-2, 22, 0), Lib.Theme.Header, contentAlpha)
+                Lib.Label(vector.create(sx+8,sectionDrawY+5,z+3), sect.name, Lib.Theme.TextDim, false, contentAlpha)
+                Lib.Line(vector.create(sx+1,sectionDrawY+23,z+2), vector.create(sx+COL_W-1,sectionDrawY+23,z+2), Lib.Theme.Border, contentAlpha, 1)
 
                 local cy = sy + 30
                 for _, item in ipairs(sect.items) do
@@ -433,6 +452,53 @@ function Module.CreateWindow(self, props)
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetFill, dt * 15)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(item.anim.slide, 2, 0), Lib.Theme.Accent, contentAlpha)
                         Lib.Circle(vector.create(barX+item.anim.slide, barY+1, z+4), 4, Lib.Theme.Text, contentAlpha)
+
+                    elseif itemVisible and item.type == "rangeslider" then
+                        local barW = 100
+                        local valueRight = sx + COL_W - 15
+                        local valueStart = valueRight - 48
+                        local barX = valueStart - 8 - barW
+                        local barY = cy + 10
+                        local range = math.max(item.max - item.min, item.step)
+                        local minPct = math.clamp((item.lower - item.min) / range, 0, 1)
+                        local maxPct = math.clamp((item.upper - item.min) / range, 0, 1)
+                        local minX = barX + (minPct * barW)
+                        local maxX = barX + (maxPct * barW)
+                        local sliderPos = vector.create(sx+4, cy-2, 0)
+                        local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W-8, 24, 0))
+
+                        local function snapValue(mouseX)
+                            local pct = math.clamp((mouseX - barX) / barW, 0, 1)
+                            local raw = item.min + (range * pct)
+                            local snapped = item.min + (math.round((raw - item.min) / item.step) * item.step)
+                            return math.clamp(snapped, item.min, item.max)
+                        end
+
+                        if click and sliderHover then
+                            local mouseX = Lib.State.MousePos.x
+                            item.dragging = math.abs(mouseX - minX) <= math.abs(mouseX - maxX) and "lower" or "upper"
+                        end
+                        if not isleftpressed() then item.dragging = nil end
+                        if item.dragging == "lower" and isleftpressed() then
+                            item.lower = math.min(snapValue(Lib.State.MousePos.x), item.upper - item.step)
+                            item.lower = math.max(item.min, item.lower)
+                            if item.callback then item.callback(item.lower, item.upper) end
+                            if item.flag then Lib.Flags[item.flag] = {Min=item.lower, Max=item.upper} end
+                            Lib.State.InputBusy = true
+                        elseif item.dragging == "upper" and isleftpressed() then
+                            item.upper = math.max(snapValue(Lib.State.MousePos.x), item.lower + item.step)
+                            item.upper = math.min(item.max, item.upper)
+                            if item.callback then item.callback(item.lower, item.upper) end
+                            if item.flag then Lib.Flags[item.flag] = {Min=item.lower, Max=item.upper} end
+                            Lib.State.InputBusy = true
+                        end
+
+                        Lib.Label(vector.create(nmX, cy+4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
+                        Lib.Label(vector.create(valueStart, cy+4, z+3), tostring(item.lower) .. "-" .. tostring(item.upper), Lib.Theme.TextDim, false, contentAlpha)
+                        Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
+                        Lib.Rect(vector.create(minX, barY, z+3), vector.create(math.max(1, maxX-minX), 2, 0), Lib.Theme.Accent, contentAlpha)
+                        Lib.Circle(vector.create(minX, barY+1, z+4), 4, Lib.Theme.Text, contentAlpha)
+                        Lib.Circle(vector.create(maxX, barY+1, z+4), 4, Lib.Theme.Text, contentAlpha)
 
                     elseif itemVisible and item.type == "dropdown" then
                         if iClick then item.open = not item.open end
@@ -498,6 +564,43 @@ function Module.CreateWindow(self, props)
                             if nc ~= item.color then item.color = nc; if item.callback then item.callback(nc) end; if item.flag then Lib.Flags[item.flag] = {R=nc.R, G=nc.G, B=nc.B} end end
                             iH = iH + 75
                         end
+                    elseif itemVisible and item.type == "textbox" then
+                        local boxPos = vector.create(sx + 105, cy + 1, z + 3)
+                        local boxSize = vector.create(COL_W - 120, 22, 0)
+                        if iClick then item.focused = true end
+                        if click and not Lib:IsMouseOver(boxPos, boxSize) and not hover then item.focused = false end
+
+                        if item.focused then
+                            local pressed = getpressedkeys()
+                            item.keyState = item.keyState or {}
+                            if pressed then
+                                local current = {}
+                                for _, key in ipairs(pressed) do
+                                    local token = keyToken(key)
+                                    current[token or key] = true
+                                    if not item.keyState[token or key] then
+                                        local mapped = TextKeys[token]
+                                        if mapped == "BACKSPACE" then
+                                            item.text = string.sub(item.text, 1, math.max(0, #item.text - 1))
+                                        elseif mapped == "ENTER" then
+                                            item.focused = false
+                                        elseif mapped then
+                                            item.text = item.text .. mapped
+                                        end
+                                    end
+                                end
+                                item.keyState = current
+                            else
+                                item.keyState = {}
+                            end
+                            if item.callback then item.callback(item.text) end
+                            if item.flag then Lib.Flags[item.flag] = item.text end
+                        end
+
+                        Lib.Label(vector.create(nmX, cy + 5, z + 4), item.name, Lib.Theme.Text, false, contentAlpha)
+                        Lib.Rect(boxPos, boxSize, Lib.Theme.Border, contentAlpha)
+                        Lib.Rect(vector.create(boxPos.x + 1, boxPos.y + 1, z + 3), vector.create(boxSize.x - 2, boxSize.y - 2, 0), Lib.Theme.Header, contentAlpha)
+                        Lib.Label(vector.create(boxPos.x + 7, boxPos.y + 5, z + 4), item.text, item.focused and Lib.Theme.Text or Lib.Theme.TextDim, false, contentAlpha)
                     elseif itemVisible and item.type == "binder" then
                         if Lib.State.RightMouseDown and not Lib.State.RightMouseHeld and not Lib.State.ContextMenu.IsOpen and hover then
                             Lib.State.ContextMenu = {
@@ -609,9 +712,31 @@ function Module.CreateWindow(self, props)
             local sec = {name=p.Name, side=p.Side or "Left", subcategory=p.Subcategory, items={}}
             function sec:Toggle(p) table.insert(sec.items, {type="toggle", name=p.Name, value=p.Default or false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or false end end
             function sec:Slider(p) table.insert(sec.items, {type="slider", name=p.Name, value=p.Default or p.Min, min=p.Min, max=p.Max, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or p.Min end end
-            function sec:Dropdown(p) local sel = p.Default; if p.Multi and type(sel) ~= "table" then sel = {}; end table.insert(sec.items, {type="dropdown", name=p.Name, options=p.Options, selected=sel, open=false, multi=p.Multi, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = sel end end
-            function sec:Button(p) table.insert(sec.items, {type="button", name=p.Name, callback=p.Callback}) end
+            function sec:RangeSlider(p)
+                local step = p.Step or 1
+                local lower = p.DefaultMin or p.Min
+                local upper = p.DefaultMax or p.Max
+                local item = {type="rangeslider", name=p.Name, min=p.Min, max=p.Max, step=step, lower=lower, upper=upper, callback=p.Callback, flag=p.Flag}
+                table.insert(sec.items, item)
+                if p.Flag then Lib.Flags[p.Flag] = {Min=lower, Max=upper} end
+                return item
+            end
+            function sec:Dropdown(p)
+                local sel = p.Default
+                if p.Multi and type(sel) ~= "table" then sel = {} end
+                local item = {type="dropdown", name=p.Name, options=p.Options, selected=sel, open=false, multi=p.Multi, callback=p.Callback, flag=p.Flag}
+                table.insert(sec.items, item)
+                if p.Flag then Lib.Flags[p.Flag] = sel end
+                return item
+            end
+            function sec:Button(p) local item = {type="button", name=p.Name, callback=p.Callback}; table.insert(sec.items, item); return item end
             function sec:ColorPicker(p) local c = p.Default or Color3.new(1,1,1); table.insert(sec.items, {type="colorpicker", name=p.Name, color=c, open=false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = {R=c.R, G=c.G, B=c.B} end end
+            function sec:Textbox(p)
+                local item = {type="textbox", name=p.Name, text=p.Default or "", focused=false, keyState={}, callback=p.Callback, flag=p.Flag}
+                table.insert(sec.items, item)
+                if p.Flag then Lib.Flags[p.Flag] = item.text end
+                return item
+            end
             function sec:Binder(p)
                 local mode = (p.Mode == "Hold" or p.Mode == "Tap") and p.Mode or "Toggle"
                 local item = {

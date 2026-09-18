@@ -243,7 +243,7 @@ function Module.CreateWindow(self, props)
                 local h = 28
                 for _, it in ipairs(s.items) do
                     local add = 28 
-                    if it.type == "slider" then add = ((#it.name * 7) > (COL_W - 20)) and 60 or 46 end
+                    if it.type == "slider" then add = 60 end
                     if it.type == "dropdown" and it.open then add = add + (#it.options * 22) + 6 end
                     if it.type == "colorpicker" and it.open then add = add + 75 end
                     h = h + add
@@ -304,7 +304,7 @@ function Module.CreateWindow(self, props)
                 local sh = 28
                 for _, it in ipairs(sect.items) do
                     local add = 28
-                    if it.type == "slider" then add = ((#it.name * 7) > (COL_W - 20)) and 60 or 46 end
+                    if it.type == "slider" then add = 60 end
                     if it.type=="dropdown" and it.open then add=add+(#it.options*22)+6 end
                     if it.type=="colorpicker" and it.open then add=add+75 end
                     sh = sh + add
@@ -325,7 +325,7 @@ function Module.CreateWindow(self, props)
                     if not item.anim then item.anim = { slide = 0, hover = 0 } end
                     local nmX, valX = sx+10, sx+COL_W-15
                     local iH = 28
-                    if item.type == "slider" then iH = ((#item.name * 7) > (COL_W - 20)) and 60 or 46 end
+                    if item.type == "slider" then iH = 60 end
                     if item.type == "dropdown" and item.open then iH = iH + (#item.options * 22) + 6 end
                     if item.type == "colorpicker" and item.open then iH = iH + 75 end
                     local itemVisible = cy + iH >= contentTop and cy <= contentBottom
@@ -354,7 +354,7 @@ function Module.CreateWindow(self, props)
                         local valStr = tostring(item.value); local valW = 7 * #valStr
                         local barW = 100; local barX = valX - valW - 15 - barW
                         local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, COL_W - 20, false, contentAlpha)
-                        local controlY = cy + math.max(16, (labelLines * 14) + 2)
+                        local controlY = cy + 32
                         local barY = controlY + 10
                         local sliderPos = vector.create(sx+4, controlY-2, 0)
                         local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W-8, 24, 0))

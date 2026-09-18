@@ -38,9 +38,31 @@ local function getSliderLayout(name, valueWidth)
     }
 end
 
-local function textFromKey(key)
+local punctuationKeys = {
+    Comma = {",", "<"},
+    Period = {".", ">"},
+    Slash = {"/", "?"},
+    Backslash = {"\\", "|"},
+    Semicolon = {";", ":"},
+    Apostrophe = {"'", "\""},
+    Quote = {"'", "\""},
+    LeftBracket = {"[", "{"},
+    RightBracket = {"]", "}"},
+    Minus = {"-", "_"},
+    Equals = {"=", "+"},
+    Backquote = {"`", "~"},
+}
+
+local digitKeys = {
+    Zero = {"0", ")"}, One = {"1", "!"}, Two = {"2", "@"},
+    Three = {"3", "#"}, Four = {"4", "$"}, Five = {"5", "%"},
+    Six = {"6", "^"}, Seven = {"7", "&"}, Eight = {"8", "*"},
+    Nine = {"9", "("},
+}
+
+local function textFromKey(key, shift)
     if type(key) ~= "string" then return nil end
-    if #key == 1 then return key:lower() end
+    if #key == 1 then return shift and key:upper() or key:lower() end
     if key == "Space" then return " " end
     if key == "Backspace" then return "BACKSPACE" end
     if key == "Delete" then return "DELETE" end
@@ -50,8 +72,15 @@ local function textFromKey(key)
     if key == "Right" or key == "RightArrow" then return "RIGHT" end
     if key == "Home" then return "HOME" end
     if key == "End" then return "END" end
+    local punctuation = punctuationKeys[key]
+    if punctuation then return shift and punctuation[2] or punctuation[1] end
+    local digit = digitKeys[key]
+    if digit then return shift and digit[2] or digit[1] end
     return nil
 end
+
+local TEXTBOX_BACKSPACE_INITIAL_DELAY = 0.25
+local TEXTBOX_BACKSPACE_REPEAT_RATE = 0.08
 
 function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
     local maxChars = math.max(1, math.floor(maxWidth / 7))
@@ -634,11 +663,11 @@ function Module.CreateWindow(self, props)
                                 for _, key in ipairs(pressed) do
                                     current[key] = true
                                     if not item.keyState[key] then
-                                        local mapped = textFromKey(key)
+                                        local mapped = textFromKey(key, shift)
                                         if mapped == "BACKSPACE" then
                                             deletePrevious()
                                             item.repeatKey = key
-                                            item.repeatAt = now + 0.5
+                                            item.repeatAt = now + TEXTBOX_BACKSPACE_INITIAL_DELAY
                                         elseif mapped == "DELETE" then
                                             item.text = string.sub(item.text, 1, item.cursor - 1) .. string.sub(item.text, item.cursor + 1)
                                         elseif mapped == "ENTER" then
@@ -654,13 +683,12 @@ function Module.CreateWindow(self, props)
                                         elseif mapped == "END" then
                                             item.cursor = #item.text + 1
                                         elseif mapped then
-                                            local character = shift and mapped:upper() or mapped
-                                            item.text = string.sub(item.text, 1, item.cursor - 1) .. character .. string.sub(item.text, item.cursor)
-                                            item.cursor = item.cursor + #character
+                                            item.text = string.sub(item.text, 1, item.cursor - 1) .. mapped .. string.sub(item.text, item.cursor)
+                                            item.cursor = item.cursor + #mapped
                                         end
                                     elseif key == item.repeatKey and key == "Backspace" and now >= (item.repeatAt or math.huge) then
                                         deletePrevious()
-                                        item.repeatAt = now + 0.3
+                                        item.repeatAt = now + TEXTBOX_BACKSPACE_REPEAT_RATE
                                     end
                                 end
                                 item.keyState = current

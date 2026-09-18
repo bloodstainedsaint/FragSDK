@@ -466,8 +466,8 @@ function Module.CreateWindow(self, props)
                         end
                         local controlY = sliderLayout.topLabel and (cy + 18) or cy
                         local barY = controlY + 10
-                        local sliderPos = vector.create(sx+4, controlY-2, 0)
-                        local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W-8, 24, 0))
+                        local sliderPos = vector.create(barX - 8, barY - 8, 0)
+                        local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(barW + 16, 16, 0))
                         if sliderHover and isleftpressed() and not Lib.State.InputBusy then
                             local bx = barX
                             local pct = math.clamp((Lib.State.MousePos.x - bx) / barW, 0, 1)
@@ -504,8 +504,8 @@ function Module.CreateWindow(self, props)
                         local maxPct = math.clamp((item.upper - item.min) / range, 0, 1)
                         local minX = barX + (minPct * barW)
                         local maxX = barX + (maxPct * barW)
-                        local sliderPos = vector.create(sx+4, cy-2, 0)
-                        local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W-8, 24, 0))
+                        local sliderPos = vector.create(sx + 4, cy - 2, 0)
+                        local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W - 8, iH, 0))
 
                         local function snapValue(mouseX)
                             local pct = math.clamp((mouseX - barX) / barW, 0, 1)

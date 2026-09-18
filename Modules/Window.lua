@@ -390,6 +390,7 @@ function Module.CreateWindow(self, props)
                 or section.subcategory == page.activeSubcategory
         end
 
+        local x, y, z = self.pos.x, self.pos.y, Lib.Layer.Base
         local subBarWidth = WIN_W - 24
         local subTotalWidth = 0
         local subWidths = {}
@@ -446,7 +447,6 @@ function Module.CreateWindow(self, props)
 
         Lib:HandleDraggable(self, true, vector.create(WIN_W, 34, 0))
         
-        local x, y, z = self.pos.x, self.pos.y, Lib.Layer.Base
         if maxScroll > 0 and Lib.State.MouseWheel ~= 0
             and Lib:IsMouseOver(vector.create(x, y+34, 0), vector.create(WIN_W, windowHeight-34, 0)) then
             self.scroll = math.clamp(self.scroll - (Lib.State.MouseWheel * 45), 0, maxScroll)

@@ -236,7 +236,7 @@ function Module.CreateWindow(self, props)
         self.tabAlpha = Lib.Lerp(self.tabAlpha, 1, dt * 10)
 
         local page = self.pages[self.activePage]
-        local hasSubcategories = page and #page.subcategories > 0
+        local hasSubcategories = page and page.subcategories and #page.subcategories > 0 or false
         if hasSubcategories and not page.activeSubcategory then
             page.activeSubcategory = page.subcategories[1].name
         end
@@ -266,10 +266,10 @@ function Module.CreateWindow(self, props)
         end
         local totalH = math.max(lY, rY)
         local contentHeight = totalH + 20
-        local maxHeight = math.min(self.maxHeight, math.max(260, Lib.State.ScreenSize.y - 40))
+        local maxHeight = math.min(self.maxHeight or DEFAULT_MAX_H, math.max(260, Lib.State.ScreenSize.y - 40))
         local windowHeight = math.min(contentHeight, maxHeight)
         local maxScroll = math.max(0, contentHeight - windowHeight)
-        self.scroll = math.clamp(self.scroll, 0, maxScroll)
+        self.scroll = math.clamp(self.scroll or 0, 0, maxScroll)
         self.size = vector.create(WIN_W, windowHeight, 0)
 
         Lib:HandleDraggable(self, true, vector.create(WIN_W, 34, 0))
@@ -340,7 +340,7 @@ function Module.CreateWindow(self, props)
         if page then
             for _, sect in ipairs(page.sections) do
                 if not sectionVisible(sect) then continue end
-                local sx = (sect.side == "Left") and (x+12) or (x+12+COL_W+12); local sy = y+sect.ry-self.scroll
+                local sx = (sect.side == "Left") and (x+12) or (x+12+COL_W+12); local sy = y+(sect.ry or contentStart)-self.scroll
                 local sh = 28
                 for _, it in ipairs(sect.items) do
                     local add = 28

@@ -89,6 +89,35 @@ Widgets (Add these to sections):
   - Hold is active only while the key is held.
   - Tap fires once per key press.
 
+* section:Textbox(config)
+  Adds a text input field.
+  - config: { Name = string, Default = string, Flag = string, Callback = function(text) }
+
+* section:RangeSlider(config)
+  Adds a two-knob range slider.
+  - config: {
+      Name = string,
+      Min = number,
+      Max = number,
+      DefaultMin = number,
+      DefaultMax = number,
+      Step = number,
+      Flag = string,
+      Callback = function(minValue, maxValue)
+    }
+  - The knobs snap to Step and cannot cross each other.
+
+CONFIGURATION TAB
+
+* Frag:AddConfigTab(window, config?)
+  Adds an optional configuration page with save, load, overwrite, delete,
+  and refresh controls.
+  - config.Name: page name, defaults to "Configs"
+  - config.Folder: storage folder, defaults to "FragSDK/Configs"
+
+Example:
+  Frag:AddConfigTab(mainWindow, { Folder = "MyTool/Configs" })
+
 State Options:
 * Saved option values are stored at: Frag.Flags[FlagName]
 * Frag.State.EditMode = bool -- Toggles the layout editor (dragging/snapping)
@@ -106,7 +135,8 @@ local Modules = {
     "Input",
     "Notifications",
     "Window",
-    "Docs"
+    "Docs",
+    "Configs"
 }
 
 local function LoadModule(name)

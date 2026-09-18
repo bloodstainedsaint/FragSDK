@@ -13,6 +13,12 @@ local function safeName(name)
     return name
 end
 
+local function colorChannel(value)
+    value = tonumber(value) or 0
+    if value <= 1 then value = value * 255 end
+    return math.floor(math.clamp(value, 0, 255) + 0.5)
+end
+
 local function notify(self, text)
     if self.Notify then self:Notify(text, 2) end
 end
@@ -36,7 +42,18 @@ end
 local function snapshot(self)
     local data = {}
     for key, value in pairs(self.Flags) do
-        data[key] = value
+        if type(value) == "table"
+            and type(value.R) == "number"
+            and type(value.G) == "number"
+            and type(value.B) == "number" then
+            data[key] = {
+                R = colorChannel(value.R),
+                G = colorChannel(value.G),
+                B = colorChannel(value.B)
+            }
+        else
+            data[key] = value
+        end
     end
     return data
 end
@@ -58,12 +75,9 @@ local function apply(self, data)
                         elseif item.type == "dropdown" then
                             item.selected = value
                         elseif item.type == "colorpicker" and type(value) == "table" then
-                            local r = value.R <= 1 and value.R * 255 or value.R
-                            local g = value.G <= 1 and value.G * 255 or value.G
-                            local b = value.B <= 1 and value.B * 255 or value.B
-                            r = math.floor(math.clamp(r, 0, 255) + 0.5)
-                            g = math.floor(math.clamp(g, 0, 255) + 0.5)
-                            b = math.floor(math.clamp(b, 0, 255) + 0.5)
+                            local r = colorChannel(value.R)
+                            local g = colorChannel(value.G)
+                            local b = colorChannel(value.B)
                             item.color = Color3.fromRGB(r, g, b)
                             callbackValue = item.color
                         elseif item.type == "binder" and type(value) == "table" then

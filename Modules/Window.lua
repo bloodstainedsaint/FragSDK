@@ -236,10 +236,23 @@ function Module.CreateWindow(self, props)
         self.tabAlpha = Lib.Lerp(self.tabAlpha, 1, dt * 10)
 
         local page = self.pages[self.activePage]
-        local lY, rY = 55, 55
+        local hasSubcategories = page and #page.subcategories > 0
+        if hasSubcategories and not page.activeSubcategory then
+            page.activeSubcategory = page.subcategories[1].name
+        end
+
+        local function sectionVisible(section)
+            return not hasSubcategories
+                or section.subcategory == nil
+                or section.subcategory == page.activeSubcategory
+        end
+
+        local contentStart = hasSubcategories and 82 or 55
+        local lY, rY = contentStart, contentStart
         
         if page then
             for _, s in ipairs(page.sections) do
+                if not sectionVisible(s) then continue end
                 local h = 28
                 for _, it in ipairs(s.items) do
                     local add = 28 
@@ -293,6 +306,32 @@ function Module.CreateWindow(self, props)
             end
             tx = tx + w
         end
+
+        if hasSubcategories then
+            Lib.Line(vector.create(x+1, y+58, z), vector.create(x+WIN_W-1, y+58, z), Lib.Theme.Border, winAlpha, 1)
+            local stx = x + 12
+            for _, sub in ipairs(page.subcategories) do
+                local sw = (7 * #sub.name) + 20
+                local subPos = vector.create(stx, y+36, 0)
+                if click and not occluded and Lib:IsMouseOver(subPos, vector.create(sw, 22, 0)) then
+                    page.activeSubcategory = sub.name
+                    self.scroll = 0
+                end
+
+                local activeSub = page.activeSubcategory == sub.name
+                Lib.Label(
+                    vector.create(stx+10, y+41, z+1),
+                    sub.name,
+                    activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
+                    false,
+                    winAlpha
+                )
+                if activeSub then
+                    Lib.Rect(vector.create(stx, y+56, z+1), vector.create(sw, 2, 0), Lib.Theme.Accent, winAlpha)
+                end
+                stx = stx + sw
+            end
+        end
         
         local contentAlpha = self.tabAlpha * winAlpha
         local contentTop = y + 55
@@ -300,6 +339,7 @@ function Module.CreateWindow(self, props)
 
         if page then
             for _, sect in ipairs(page.sections) do
+                if not sectionVisible(sect) then continue end
                 local sx = (sect.side == "Left") and (x+12) or (x+12+COL_W+12); local sy = y+sect.ry-self.scroll
                 local sh = 28
                 for _, it in ipairs(sect.items) do
@@ -492,9 +532,18 @@ function Module.CreateWindow(self, props)
     
     function window:Page(p)
         for _, pg in ipairs(self.pages) do if pg.name == p.Name then return pg end end
-        local pg = {name=p.Name, sections={}}
+        local pg = {name=p.Name, sections={}, subcategories={}, activeSubcategory=nil}
+        function pg:Subcategory(p)
+            for _, sub in ipairs(self.subcategories) do
+                if sub.name == p.Name then return sub end
+            end
+            local sub = {name=p.Name}
+            table.insert(self.subcategories, sub)
+            if not self.activeSubcategory then self.activeSubcategory = sub.name end
+            return sub
+        end
         function pg:Section(p)
-            local sec = {name=p.Name, side=p.Side or "Left", items={}}
+            local sec = {name=p.Name, side=p.Side or "Left", subcategory=p.Subcategory, items={}}
             function sec:Toggle(p) table.insert(sec.items, {type="toggle", name=p.Name, value=p.Default or false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or false end end
             function sec:Slider(p) table.insert(sec.items, {type="slider", name=p.Name, value=p.Default or p.Min, min=p.Min, max=p.Max, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or p.Min end end
             function sec:Dropdown(p) local sel = p.Default; if p.Multi and type(sel) ~= "table" then sel = {}; end table.insert(sec.items, {type="dropdown", name=p.Name, options=p.Options, selected=sel, open=false, multi=p.Multi, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = sel end end

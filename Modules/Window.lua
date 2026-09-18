@@ -351,19 +351,22 @@ function Module.CreateWindow(self, props)
                         Lib.Circle(vector.create(knX, cy+10, z+4), 4, Lib.Theme.Text, contentAlpha)
 
                     elseif itemVisible and item.type == "slider" then
-                        if hover and isleftpressed() and not Lib.State.InputBusy then
-                            local barW = 100; local bx = valX - 7*#tostring(item.value) - 15 - barW
-                            local pct = math.clamp((Lib.State.MousePos.x - bx) / 100, 0, 1)
-                            local nv = math.floor(item.min + (item.max - item.min) * pct)
-                            if nv ~= item.value then 
-                                item.value = nv; if item.callback then item.callback(nv) end; if item.flag then Lib.Flags[item.flag] = nv end 
-                            end
-                        end
                         local valStr = tostring(item.value); local valW = 7 * #valStr
                         local barW = 100; local barX = valX - valW - 15 - barW
                         local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, COL_W - 20, false, contentAlpha)
-                        local controlY = cy + math.max(18, (labelLines * 14) + 4)
+                        local controlY = cy + math.max(16, (labelLines * 14) + 2)
                         local barY = controlY + 10
+                        local sliderPos = vector.create(sx+4, controlY-2, 0)
+                        local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W-8, 24, 0))
+                        if sliderHover and isleftpressed() and not Lib.State.InputBusy then
+                            local bx = barX
+                            local pct = math.clamp((Lib.State.MousePos.x - bx) / barW, 0, 1)
+                            local nv = math.floor(item.min + (item.max - item.min) * pct)
+                            if nv ~= item.value then
+                                item.value = nv; if item.callback then item.callback(nv) end; if item.flag then Lib.Flags[item.flag] = nv end
+                            end
+                            Lib.State.InputBusy = true
+                        end
                         Lib.Label(vector.create(valX - valW, controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW

@@ -352,7 +352,7 @@ function Module.CreateWindow(self, props)
 
     local window = { 
         name = props.Name or "UI", 
-        info = props.Info or props.StatusText or "",
+        info = props.Info or props.StatusText or props.Name or "",
         pos = props.Position or vector.create(200,200,0), 
         size = vector.create(WIN_W, 30, 0), 
         dragging = false, 
@@ -485,7 +485,6 @@ function Module.CreateWindow(self, props)
         Lib.Rect(vector.create(x,y,z), self.size, Lib.Theme.Border, winAlpha)
         Lib.Rect(vector.create(x+1,y+1,z), vector.create(WIN_W-2, windowHeight-2,0), Lib.Theme.Background, winAlpha)
         Lib.Rect(vector.create(x+1,y+1,z), vector.create(WIN_W-2,34,0), Lib.Theme.Header, winAlpha)
-        Lib.Label(vector.create(x+12,y+10,z+1), self.name, Lib.Theme.Text, false, winAlpha)
         Lib.Line(vector.create(x+1,y+34,z), vector.create(x+WIN_W-1,y+34,z), Lib.Theme.Border, winAlpha, 1)
         Lib.Rect(vector.create(x+1, y+35, z), vector.create(WIN_W-2, 17, 0), Lib.Theme.Background, winAlpha)
         local infoText = self.info
@@ -504,7 +503,7 @@ function Module.CreateWindow(self, props)
         end
         -- These are offsets inside the window. Adding x here as well as below
         -- made the page row move roughly twice as far as the window.
-        local pageTabLeft = math.max(110, 12 + (7 * #self.name) + 20)
+        local pageTabLeft = 12
         local centeredPageTabs = (WIN_W - pageTabTotal) / 2
         local tx = pageTabTotal <= (WIN_W - 24) and centeredPageTabs or pageTabLeft
         for i, pg in ipairs(self.pages) do

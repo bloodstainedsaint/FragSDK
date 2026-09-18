@@ -531,6 +531,40 @@ function Module.CreateWindow(self, props)
             end
         end
 
+        -- Cover content that was drawn outside the scroll viewport.
+        Lib.Rect(
+            vector.create(x + 1, y + 35, z + 100),
+            vector.create(WIN_W - 2, math.max(0, contentTop - (y + 35)), 0),
+            Lib.Theme.Background,
+            winAlpha
+        )
+        Lib.Rect(
+            vector.create(x + 1, contentBottom, z + 100),
+            vector.create(WIN_W - 2, math.max(0, (y + windowHeight) - contentBottom - 1), 0),
+            Lib.Theme.Background,
+            winAlpha
+        )
+
+        if hasSubcategories then
+            Lib.Line(vector.create(x+1, y+58, z+101), vector.create(x+WIN_W-1, y+58, z+101), Lib.Theme.Border, winAlpha, 1)
+            local redrawX = x + 12
+            for _, sub in ipairs(page.subcategories) do
+                local subWidth = (7 * #sub.name) + 20
+                local activeSub = page.activeSubcategory == sub.name
+                Lib.Label(
+                    vector.create(redrawX+10, y+41, z+102),
+                    sub.name,
+                    activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
+                    false,
+                    winAlpha
+                )
+                if activeSub then
+                    Lib.Rect(vector.create(redrawX, y+56, z+102), vector.create(subWidth, 2, 0), Lib.Theme.Accent, winAlpha)
+                end
+                redrawX = redrawX + subWidth
+            end
+        end
+
         if maxScroll > 0 then
             local trackX = x + WIN_W - 8
             local trackY = y + 42

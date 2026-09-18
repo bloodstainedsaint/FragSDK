@@ -26,6 +26,9 @@ function Module.UpdateInput(self)
     if s and mPos then self.State.MousePos = mPos end
     if workspace.CurrentCamera then self.State.ScreenSize = workspace.CurrentCamera.ViewportSize end
 
+    local wheelSuccess, wheelDelta = pcall(getmousewheel)
+    self.State.MouseWheel = wheelSuccess and type(wheelDelta) == "number" and wheelDelta or 0
+
     local lDown = isleftpressed()
     if lDown and not self.State.MouseDown then self.State.MouseDown = true
     elseif lDown and self.State.MouseDown then self.State.MouseHeld = true

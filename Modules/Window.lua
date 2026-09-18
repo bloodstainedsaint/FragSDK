@@ -286,8 +286,8 @@ function Module.CreateWindow(self, props)
                         end
                         local targetSlide = item.value and 1 or 0
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetSlide, dt * 12)
-                        Lib.Label(vector.create(nmX, cy+4, z+3), item.name, item.value and Lib.Theme.Text or Lib.Theme.TextDim, false, contentAlpha)
                         local swW = 22; local swX = valX - swW
+                        Lib.LabelFit(vector.create(nmX, cy+4, z+3), item.name, item.value and Lib.Theme.Text or Lib.Theme.TextDim, swX - nmX - 10, false, contentAlpha)
                         local curCol = Lib.LerpColor(Lib.Theme.SwitchBg, Lib.Theme.Accent, item.anim.slide)
                         Lib.Circle(vector.create(swX, cy+10, z+3), 6, curCol, contentAlpha)
                         Lib.Circle(vector.create(swX+12, cy+10, z+3), 6, curCol, contentAlpha)
@@ -304,10 +304,10 @@ function Module.CreateWindow(self, props)
                                 item.value = nv; if item.callback then item.callback(nv) end; if item.flag then Lib.Flags[item.flag] = nv end 
                             end
                         end
-                        Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
                         local valStr = tostring(item.value); local valW = 7 * #valStr
                         Lib.Label(vector.create(valX - valW, cy + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
                         local barW = 100; local barX = valX - valW - 15 - barW; local barY = cy + 10
+                        Lib.LabelFit(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, barX - nmX - 10, false, contentAlpha)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetFill, dt * 15)
@@ -321,7 +321,7 @@ function Module.CreateWindow(self, props)
                             local active = {}; for k,v in pairs(item.selected) do if v then table.insert(active, k) end end
                             if #active == 0 then dispText = "None" elseif #active <= 3 then dispText = table.concat(active, ", ") else dispText = #active .. " Selected" end
                         end
-                        Lib.Label(vector.create(nmX, cy+4, z+3), Lib.FitText(item.name, 120), Lib.Theme.Text, false, contentAlpha)
+                        Lib.LabelFit(vector.create(nmX, cy+4, z+3), item.name, Lib.Theme.Text, valX - nmX - 30, false, contentAlpha)
                         Lib.Label(vector.create(valX-(7*#dispText)-15, cy+4, z+3), dispText, Lib.Theme.Accent, false, contentAlpha)
                         local triC = item.open and Lib.Theme.Accent or Lib.Theme.TextDim; local cx, cy_c = valX-5, cy+10
                         if item.open then Lib.Triangle(vector.create(cx, cy_c-3, z+3), vector.create(cx-4, cy_c+2, z+3), vector.create(cx+4, cy_c+2, z+3), triC, contentAlpha)
@@ -353,7 +353,7 @@ function Module.CreateWindow(self, props)
                         Lib.Label(vector.create(nmX, cy+4, z+3), item.name, txtCol, false, contentAlpha)
                     elseif item.type == "colorpicker" then
                         if iClick then item.open = not item.open end
-                        Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
+                        Lib.LabelFit(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, valX - nmX - 30, false, contentAlpha)
                         Lib.Rect(vector.create(valX - 20, cy + 6, z+3), vector.create(20, 10, 0), item.color, contentAlpha)
                         if item.open then
                             local py = cy + 28
@@ -391,7 +391,7 @@ function Module.CreateWindow(self, props)
                         end
                         local txt = "[" .. (item.listening and "?" or item.key) .. "]"
                         local keyW = (7 * #txt)
-                        Lib.Label(vector.create(nmX, cy + 4, z+3), Lib.FitText(item.name, 230 - keyW), Lib.Theme.Text, false, contentAlpha)
+                        Lib.LabelFit(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, valX - nmX - keyW - 10, false, contentAlpha)
                         Lib.Label(vector.create(valX - keyW, cy + 4, z+3), txt, item.listening and Lib.Theme.Accent or Lib.Theme.TextDim, false, contentAlpha)
                     end
                     cy = cy + iH

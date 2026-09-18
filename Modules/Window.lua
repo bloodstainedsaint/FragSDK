@@ -5,7 +5,8 @@ Module.Flags = {}
 Module.Windows = {}
 Module.Widgets = {} 
 
-local WIN_W, COL_W = 560, 265 
+local WIN_W, COL_W = 560, 265
+local DEFAULT_MAX_H = 700
 
 function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
     local maxChars = math.max(1, math.floor(maxWidth / 7))
@@ -217,7 +218,10 @@ function Module.CreateWindow(self, props)
         pinned = false,
         tabAlpha = 1, 
         activePagePrev = 1,
-        resizable = false 
+        resizable = false,
+        maxHeight = props.MaxHeight or DEFAULT_MAX_H,
+        scroll = 0,
+        scrollDragging = false
     }
 
     function window:Draw(Lib)
@@ -248,7 +252,12 @@ function Module.CreateWindow(self, props)
             end
         end
         local totalH = math.max(lY, rY)
-        self.size = vector.create(WIN_W, totalH + 20, 0)
+        local contentHeight = totalH + 20
+        local maxHeight = math.min(self.maxHeight, math.max(260, Lib.State.ScreenSize.y - 40))
+        local windowHeight = math.min(contentHeight, maxHeight)
+        local maxScroll = math.max(0, contentHeight - windowHeight)
+        self.scroll = math.clamp(self.scroll, 0, maxScroll)
+        self.size = vector.create(WIN_W, windowHeight, 0)
 
         Lib:HandleDraggable(self, true, vector.create(WIN_W, 34, 0))
         
@@ -267,7 +276,7 @@ function Module.CreateWindow(self, props)
         if winAlpha < 0.01 then return end
 
         Lib.Rect(vector.create(x,y,z), self.size, Lib.Theme.Border, winAlpha)
-        Lib.Rect(vector.create(x+1,y+1,z), vector.create(WIN_W-2, totalH+18,0), Lib.Theme.Background, winAlpha)
+        Lib.Rect(vector.create(x+1,y+1,z), vector.create(WIN_W-2, windowHeight-2,0), Lib.Theme.Background, winAlpha)
         Lib.Rect(vector.create(x+1,y+1,z), vector.create(WIN_W-2,34,0), Lib.Theme.Header, winAlpha)
         Lib.Label(vector.create(x+12,y+10,z+1), self.name, Lib.Theme.Text, false, winAlpha)
         Lib.Line(vector.create(x+1,y+34,z), vector.create(x+WIN_W-1,y+34,z), Lib.Theme.Border, winAlpha, 1)
@@ -286,16 +295,23 @@ function Module.CreateWindow(self, props)
         end
         
         local contentAlpha = self.tabAlpha * winAlpha
+        local contentTop = y + 55
+        local contentBottom = y + windowHeight - 8
 
         if page then
             for _, sect in ipairs(page.sections) do
-                local sx = (sect.side == "Left") and (x+12) or (x+12+COL_W+12); local sy = y+sect.ry
+                local sx = (sect.side == "Left") and (x+12) or (x+12+COL_W+12); local sy = y+sect.ry-self.scroll
                 local sh = 28
                 for _, it in ipairs(sect.items) do
                     local add = 28
+                    if it.type == "slider" and (#it.name * 7) > 120 then add = 46 end
                     if it.type=="dropdown" and it.open then add=add+(#it.options*22)+6 end
                     if it.type=="colorpicker" and it.open then add=add+75 end
                     sh = sh + add
+                end
+
+                if sy + sh < contentTop or sy > contentBottom then
+                    continue
                 end
                 
                 Lib.Rect(vector.create(sx,sy,z+1), vector.create(COL_W,sh,0), Lib.Theme.Border, contentAlpha)
@@ -309,12 +325,16 @@ function Module.CreateWindow(self, props)
                     if not item.anim then item.anim = { slide = 0, hover = 0 } end
                     local nmX, valX = sx+10, sx+COL_W-15
                     local iH = 28
+                    if item.type == "slider" and (#item.name * 7) > 120 then iH = 46 end
+                    if item.type == "dropdown" and item.open then iH = iH + (#item.options * 22) + 6 end
+                    if item.type == "colorpicker" and item.open then iH = iH + 75 end
+                    local itemVisible = cy + iH >= contentTop and cy <= contentBottom
                     local itemPos = vector.create(sx+4, cy-2, 0)
-                    local hover = not occluded and Lib:IsMouseOver(itemPos, vector.create(COL_W-8, 24, 0))
+                    local hover = itemVisible and not occluded and Lib:IsMouseOver(itemPos, vector.create(COL_W-8, 24, 0))
                     local iClick = hover and click
                     item.anim.hover = Lib.Lerp(item.anim.hover, hover and 1 or 0, dt * 10)
-                    
-                    if item.type == "toggle" then
+
+                    if itemVisible and item.type == "toggle" then
                         if iClick then 
                             item.value = not item.value; if item.callback then item.callback(item.value) end
                             if item.flag then Lib.Flags[item.flag] = item.value end 
@@ -330,7 +350,7 @@ function Module.CreateWindow(self, props)
                         local knX = swX + (12 * item.anim.slide)
                         Lib.Circle(vector.create(knX, cy+10, z+4), 4, Lib.Theme.Text, contentAlpha)
 
-                    elseif item.type == "slider" then
+                    elseif itemVisible and item.type == "slider" then
                         if hover and isleftpressed() and not Lib.State.InputBusy then
                             local barW = 100; local bx = valX - 7*#tostring(item.value) - 15 - barW
                             local pct = math.clamp((Lib.State.MousePos.x - bx) / 100, 0, 1)
@@ -352,7 +372,7 @@ function Module.CreateWindow(self, props)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(item.anim.slide, 2, 0), Lib.Theme.Accent, contentAlpha)
                         Lib.Circle(vector.create(barX+item.anim.slide, barY+1, z+4), 4, Lib.Theme.Text, contentAlpha)
 
-                    elseif item.type == "dropdown" then
+                    elseif itemVisible and item.type == "dropdown" then
                         if iClick then item.open = not item.open end
                         local dispText = item.selected
                         if item.multi then
@@ -384,13 +404,13 @@ function Module.CreateWindow(self, props)
                             end
                             iH = iH + (#item.options * 22) + 6
                         end
-                    elseif item.type == "button" then
+                    elseif itemVisible and item.type == "button" then
                         if item.anim.hover > 0.01 then Lib.Rect(vector.create(sx+8, cy+2, z+2), vector.create(COL_W-16, 20, 0), Lib.Theme.Hover, item.anim.hover * contentAlpha) end
                         Lib.Outline(vector.create(sx+8, cy+2, z+2), vector.create(COL_W-16, 20, 0), Lib.Theme.Border, contentAlpha)
                         if iClick and item.callback then item.callback() end
                         local txtCol = Lib.LerpColor(Lib.Theme.Text, Lib.Theme.Accent, item.anim.hover)
                         Lib.Label(vector.create(nmX, cy+4, z+3), item.name, txtCol, false, contentAlpha)
-                    elseif item.type == "colorpicker" then
+                    elseif itemVisible and item.type == "colorpicker" then
                         if iClick then item.open = not item.open end
                         local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, valX - nmX - 30, false, contentAlpha)
                         if labelLines > 1 then iH = 46 end
@@ -416,7 +436,7 @@ function Module.CreateWindow(self, props)
                             if nc ~= item.color then item.color = nc; if item.callback then item.callback(nc) end; if item.flag then Lib.Flags[item.flag] = {R=nc.R, G=nc.G, B=nc.B} end end
                             iH = iH + 75
                         end
-                    elseif item.type == "binder" then
+                    elseif itemVisible and item.type == "binder" then
                         if iClick then item.listening = not item.listening end
                         if item.listening then
                             local keys = getpressedkeys()
@@ -438,6 +458,33 @@ function Module.CreateWindow(self, props)
                     cy = cy + iH
                 end
             end
+        end
+
+        if maxScroll > 0 then
+            local trackX = x + WIN_W - 8
+            local trackY = y + 42
+            local trackH = windowHeight - 50
+            local thumbH = math.max(24, trackH * (windowHeight / contentHeight))
+            local thumbTravel = trackH - thumbH
+            local thumbY = trackY + (maxScroll > 0 and (self.scroll / maxScroll) * thumbTravel or 0)
+            local thumbPos = vector.create(trackX, thumbY, z + 5)
+            local thumbSize = vector.create(5, thumbH, 0)
+
+            if click and Lib:IsMouseOver(thumbPos, thumbSize) then
+                self.scrollDragging = true
+                self.scrollDragOffset = Lib.State.MousePos.y - thumbY
+            end
+
+            if not Lib.State.MouseDown then self.scrollDragging = false end
+            if self.scrollDragging and Lib.State.MouseDown then
+                local nextY = Lib.State.MousePos.y - (self.scrollDragOffset or 0)
+                local pct = math.clamp((nextY - trackY) / thumbTravel, 0, 1)
+                self.scroll = pct * maxScroll
+                Lib.State.InputBusy = true
+            end
+
+            Lib.Rect(vector.create(trackX, trackY, z + 4), vector.create(5, trackH, 0), Lib.Theme.SwitchBg, winAlpha)
+            Lib.Rect(thumbPos, thumbSize, Lib.Theme.Accent, winAlpha)
         end
     end
     

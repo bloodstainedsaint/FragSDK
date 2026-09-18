@@ -352,6 +352,7 @@ function Module.CreateWindow(self, props)
 
     local window = { 
         name = props.Name or "UI", 
+        info = props.Info or props.StatusText or "",
         pos = props.Position or vector.create(200,200,0), 
         size = vector.create(WIN_W, 30, 0), 
         dragging = false, 
@@ -430,7 +431,10 @@ function Module.CreateWindow(self, props)
             return x + 12 + ((subBarWidth - subTotalWidth) / 2)
         end
 
-        local contentStart = hasSubcategories and 82 or 55
+        -- Header rows: title, info, major pages, then optional subcategories.
+        local pageRowTop = 52
+        local subRowTop = 76
+        local contentStart = hasSubcategories and 101 or 77
         local lY, rY = contentStart, contentStart
         
         if page then
@@ -483,6 +487,16 @@ function Module.CreateWindow(self, props)
         Lib.Rect(vector.create(x+1,y+1,z), vector.create(WIN_W-2,34,0), Lib.Theme.Header, winAlpha)
         Lib.Label(vector.create(x+12,y+10,z+1), self.name, Lib.Theme.Text, false, winAlpha)
         Lib.Line(vector.create(x+1,y+34,z), vector.create(x+WIN_W-1,y+34,z), Lib.Theme.Border, winAlpha, 1)
+        Lib.Rect(vector.create(x+1, y+35, z), vector.create(WIN_W-2, 17, 0), Lib.Theme.Background, winAlpha)
+        local infoText = self.info
+        if type(infoText) == "function" then
+            local ok, result = pcall(infoText)
+            infoText = ok and result or ""
+        end
+        if infoText and tostring(infoText) ~= "" then
+            Lib.Label(vector.create(x+12, y+39, z+1), tostring(infoText), Lib.Theme.TextDim, false, winAlpha)
+        end
+        Lib.Line(vector.create(x+1,y+51,z), vector.create(x+WIN_W-1,y+51,z), Lib.Theme.Border, winAlpha, 1)
 
         local pageTabTotal = 0
         for _, pg in ipairs(self.pages) do
@@ -497,7 +511,7 @@ function Module.CreateWindow(self, props)
             local w = (7*#pg.name)+20
             local tabX = x + tx
             local tabInHeader = tabX >= x + 2 and tabX + w <= x + WIN_W - 2
-            if tabInHeader and click and not occluded and Lib:IsMouseOver(vector.create(tabX,y+1,0), vector.create(w,34,0)) then
+            if tabInHeader and click and not occluded and Lib:IsMouseOver(vector.create(tabX,y+pageRowTop,0), vector.create(w,24,0)) then
                 if self.activePage ~= i then
                     clearPageCapture(self.pages[self.activePage])
                     self.activePage = i
@@ -507,20 +521,20 @@ function Module.CreateWindow(self, props)
             
             local isActive = (self.activePage == i)
             if tabInHeader then
-                Lib.Label(vector.create(tabX+10,y+10,z+1), pg.name, isActive and Lib.Theme.Accent or Lib.Theme.TextDim, false, winAlpha)
+                Lib.Label(vector.create(tabX+10,y+pageRowTop+6,z+1), pg.name, isActive and Lib.Theme.Accent or Lib.Theme.TextDim, false, winAlpha)
                 if isActive then 
-                    Lib.Rect(vector.create(tabX,y+34-2,z+1), vector.create(w,2,0), Lib.Theme.Accent, winAlpha)
+                    Lib.Rect(vector.create(tabX,y+pageRowTop+22,z+1), vector.create(w,2,0), Lib.Theme.Accent, winAlpha)
                 end
             end
             tx = tx + w
         end
 
         if hasSubcategories then
-            Lib.Line(vector.create(x+1, y+58, z), vector.create(x+WIN_W-1, y+58, z), Lib.Theme.Border, winAlpha, 1)
+            Lib.Line(vector.create(x+1, y+100, z), vector.create(x+WIN_W-1, y+100, z), Lib.Theme.Border, winAlpha, 1)
             local stx = subcategoryStart()
             for index, sub in ipairs(page.subcategories) do
                 local sw = subWidths[index]
-                local subPos = vector.create(stx, y+36, 0)
+                local subPos = vector.create(stx, y+subRowTop, 0)
                 local subInBar = stx >= x + 12 and stx + sw <= x + WIN_W - 12
                 if subInBar and click and not occluded and Lib:IsMouseOver(subPos, vector.create(sw, 22, 0)) then
                     clearPageCapture(page)
@@ -531,14 +545,14 @@ function Module.CreateWindow(self, props)
                 local activeSub = page.activeSubcategory == sub.name
                 if subInBar then
                     Lib.Label(
-                        vector.create(stx+10, y+41, z+1),
+                        vector.create(stx+10, y+subRowTop+5, z+1),
                         sub.name,
                         activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
                         false,
                         winAlpha
                     )
                     if activeSub then
-                        Lib.Rect(vector.create(stx, y+56, z+1), vector.create(sw, 2, 0), Lib.Theme.Accent, winAlpha)
+                        Lib.Rect(vector.create(stx, y+subRowTop+20, z+1), vector.create(sw, 2, 0), Lib.Theme.Accent, winAlpha)
                     end
                 end
                 stx = stx + sw
@@ -546,7 +560,7 @@ function Module.CreateWindow(self, props)
         end
         
         local contentAlpha = self.tabAlpha * winAlpha
-        local contentTop = y + 55
+        local contentTop = y + (hasSubcategories and 101 or 77)
         local contentBottom = y + windowHeight - 8
 
         if page then
@@ -974,53 +988,81 @@ function Module.CreateWindow(self, props)
             winAlpha
         )
 
-        if hasSubcategories then
-            Lib.Line(vector.create(x+1, y+58, z+101), vector.create(x+WIN_W-1, y+58, z+101), Lib.Theme.Border, winAlpha, 1)
-            local redrawX = subcategoryStart()
-            for index, sub in ipairs(page.subcategories) do
-                local subWidth = subWidths[index]
-                local activeSub = page.activeSubcategory == sub.name
-                local subInBar = redrawX >= x + 12 and redrawX + subWidth <= x + WIN_W - 12
-                if subInBar then
-                    Lib.Label(
-                        vector.create(redrawX+10, y+41, z+102),
-                        sub.name,
-                        activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
-                        false,
-                        winAlpha
-                    )
-                    if activeSub then
-                        Lib.Rect(vector.create(redrawX, y+56, z+102), vector.create(subWidth, 2, 0), Lib.Theme.Accent, winAlpha)
+        do
+            Lib.Rect(vector.create(x+1, y+35, z+101), vector.create(WIN_W-2, 17, 0), Lib.Theme.Background, winAlpha)
+            local redrawInfo = self.info
+            if type(redrawInfo) == "function" then
+                local ok, result = pcall(redrawInfo)
+                redrawInfo = ok and result or ""
+            end
+            if redrawInfo and tostring(redrawInfo) ~= "" then
+                Lib.Label(vector.create(x+12, y+39, z+102), tostring(redrawInfo), Lib.Theme.TextDim, false, winAlpha)
+            end
+            Lib.Line(vector.create(x+1, y+51, z+101), vector.create(x+WIN_W-1, y+51, z+101), Lib.Theme.Border, winAlpha, 1)
+
+            Lib.Rect(vector.create(x+1, y+52, z+101), vector.create(WIN_W-2, 24, 0), Lib.Theme.Header, winAlpha)
+            local redrawPageX = pageTabTotal <= (WIN_W - 24) and x + ((WIN_W - pageTabTotal) / 2) or x + pageTabLeft
+            for index, redrawPage in ipairs(self.pages) do
+                local pageWidth = (7 * #redrawPage.name) + 20
+                local pageInHeader = redrawPageX >= x + 2 and redrawPageX + pageWidth <= x + WIN_W - 2
+                if pageInHeader then
+                    local activePage = self.activePage == index
+                    Lib.Label(vector.create(redrawPageX + 10, y + pageRowTop + 6, z + 102), redrawPage.name, activePage and Lib.Theme.Accent or Lib.Theme.TextDim, false, winAlpha)
+                    if activePage then
+                        Lib.Rect(vector.create(redrawPageX, y + pageRowTop + 22, z + 102), vector.create(pageWidth, 2, 0), Lib.Theme.Accent, winAlpha)
                     end
                 end
-                redrawX = redrawX + subWidth
+                redrawPageX = redrawPageX + pageWidth
             end
 
-            if subScrollMax > 0 then
-                local fadeWidth = 36
-                local fadeStep = fadeWidth / 6
-                for index = 0, 5 do
-                    local alpha = 0.82 * (1 - (index / 6))
-                    Lib.Rect(
-                        vector.create(x + 12 + (index * fadeStep), y + 35, z + 103),
-                        vector.create(fadeStep + 1, 23, 0),
-                        Lib.Theme.Background,
-                        alpha * winAlpha
-                    )
-                    Lib.Rect(
-                        vector.create(x + WIN_W - 12 - ((index + 1) * fadeStep), y + 35, z + 103),
-                        vector.create(fadeStep + 1, 23, 0),
-                        Lib.Theme.Background,
-                        alpha * winAlpha
-                    )
+            if hasSubcategories then
+                Lib.Line(vector.create(x+1, y+100, z+101), vector.create(x+WIN_W-1, y+100, z+101), Lib.Theme.Border, winAlpha, 1)
+                local redrawX = subcategoryStart()
+                for index, sub in ipairs(page.subcategories) do
+                    local subWidth = subWidths[index]
+                    local activeSub = page.activeSubcategory == sub.name
+                    local subInBar = redrawX >= x + 12 and redrawX + subWidth <= x + WIN_W - 12
+                    if subInBar then
+                        Lib.Label(
+                            vector.create(redrawX+10, y+subRowTop+5, z+102),
+                            sub.name,
+                            activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
+                            false,
+                            winAlpha
+                        )
+                        if activeSub then
+                            Lib.Rect(vector.create(redrawX, y+subRowTop+20, z+102), vector.create(subWidth, 2, 0), Lib.Theme.Accent, winAlpha)
+                        end
+                    end
+                    redrawX = redrawX + subWidth
+                end
+
+                if subScrollMax > 0 then
+                    local fadeWidth = 36
+                    local fadeStep = fadeWidth / 6
+                    for index = 0, 5 do
+                        local alpha = 0.82 * (1 - (index / 6))
+                        Lib.Rect(
+                            vector.create(x + 12 + (index * fadeStep), y + subRowTop, z + 103),
+                            vector.create(fadeStep + 1, 23, 0),
+                            Lib.Theme.Background,
+                            alpha * winAlpha
+                        )
+                        Lib.Rect(
+                            vector.create(x + WIN_W - 12 - ((index + 1) * fadeStep), y + subRowTop, z + 103),
+                            vector.create(fadeStep + 1, 23, 0),
+                            Lib.Theme.Background,
+                            alpha * winAlpha
+                        )
+                    end
                 end
             end
         end
 
         if maxScroll > 0 then
             local trackX = x + WIN_W - 8
-            local trackY = y + 42
-            local trackH = windowHeight - 50
+            local trackY = y + (hasSubcategories and 101 or 77)
+            local trackH = math.max(10, windowHeight - (trackY - y) - 8)
             local thumbH = math.max(24, trackH * (windowHeight / contentHeight))
             local thumbTravel = trackH - thumbH
             local thumbY = trackY + (maxScroll > 0 and (self.scroll / maxScroll) * thumbTravel or 0)

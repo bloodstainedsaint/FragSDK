@@ -30,13 +30,21 @@ end
 function Module.Rect(pos, size, color, alpha) DrawingImmediate.FilledRectangle(pos, size, color, alpha or 1) end
 function Module.Outline(pos, size, color, alpha) DrawingImmediate.Rectangle(pos, size, color, alpha or 1, 1) end
 function Module.Label(pos, text, color, center, alpha) DrawingImmediate.Text(pos, 13, color, alpha or 1, text, center or false, "Proggy") end
-function Module.LabelFit(pos, text, color, maxWidth, center, alpha)
-    local size = 13
-    local estimatedWidth = #text * 7
-    if estimatedWidth > maxWidth then
-        size = math.max(1, 13 * maxWidth / estimatedWidth)
+function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
+    local maxChars = math.max(1, math.floor(maxWidth / 7))
+    local lines = Module.WrapText(text, maxChars)
+    for i, line in ipairs(lines) do
+        DrawingImmediate.Text(
+            vector.create(pos.x, pos.y + ((i - 1) * 14), pos.z),
+            13,
+            color,
+            alpha or 1,
+            line,
+            center or false,
+            "Proggy"
+        )
     end
-    DrawingImmediate.Text(pos, size, color, alpha or 1, text, center or false, "Proggy")
+    return #lines
 end
 function Module.Line(a, b, color, alpha, thickness) DrawingImmediate.Line(a, b, color, alpha or 1, 1, thickness or 1) end
 function Module.Circle(pos, radius, color, alpha) DrawingImmediate.FilledCircle(pos, radius, color, alpha or 1) end

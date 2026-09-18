@@ -61,6 +61,9 @@ local function apply(self, data)
                             local r = value.R <= 1 and value.R * 255 or value.R
                             local g = value.G <= 1 and value.G * 255 or value.G
                             local b = value.B <= 1 and value.B * 255 or value.B
+                            r = math.floor(math.clamp(r, 0, 255) + 0.5)
+                            g = math.floor(math.clamp(g, 0, 255) + 0.5)
+                            b = math.floor(math.clamp(b, 0, 255) + 0.5)
                             item.color = Color3.fromRGB(r, g, b)
                             callbackValue = item.color
                         elseif item.type == "binder" and type(value) == "table" then

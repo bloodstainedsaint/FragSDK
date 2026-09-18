@@ -379,7 +379,7 @@ function Module.CreateWindow(self, props)
                     if item.type == "slider" then iH = ((#item.name * 7) > SLIDER_LABEL_W) and 46 or 28 end
                     if item.type == "dropdown" and item.open then iH = iH + (#item.options * 22) + 6 end
                     if item.type == "colorpicker" and item.open then iH = iH + 75 end
-                    local itemVisible = cy + iH >= contentTop and cy <= contentBottom
+                    local itemVisible = cy >= contentTop and cy + iH <= contentBottom
                     local itemPos = vector.create(sx+4, cy-2, 0)
                     local hover = itemVisible and not occluded and Lib:IsMouseOver(itemPos, vector.create(COL_W-8, 24, 0))
                     local iClick = hover and click
@@ -607,6 +607,13 @@ function Module.CreateWindow(self, props)
 end
 
 function Module.Init(self)
+    local userInputService = game:GetService("UserInputService")
+    userInputService.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+            self.State.WheelInput += input.Position.Z
+        end
+    end)
+
     local ren = game:GetService("RunService").Render
     
     ren:Connect(function()

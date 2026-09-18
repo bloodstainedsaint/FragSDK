@@ -243,7 +243,7 @@ function Module.CreateWindow(self, props)
                 local h = 28
                 for _, it in ipairs(s.items) do
                     local add = 28 
-                    if it.type == "slider" and (#it.name * 7) > 120 then add = 46 end
+                    if it.type == "slider" then add = ((#it.name * 7) > (COL_W - 20)) and 60 or 46 end
                     if it.type == "dropdown" and it.open then add = add + (#it.options * 22) + 6 end
                     if it.type == "colorpicker" and it.open then add = add + 75 end
                     h = h + add
@@ -304,7 +304,7 @@ function Module.CreateWindow(self, props)
                 local sh = 28
                 for _, it in ipairs(sect.items) do
                     local add = 28
-                    if it.type == "slider" and (#it.name * 7) > 120 then add = 46 end
+                    if it.type == "slider" then add = ((#it.name * 7) > (COL_W - 20)) and 60 or 46 end
                     if it.type=="dropdown" and it.open then add=add+(#it.options*22)+6 end
                     if it.type=="colorpicker" and it.open then add=add+75 end
                     sh = sh + add
@@ -325,7 +325,7 @@ function Module.CreateWindow(self, props)
                     if not item.anim then item.anim = { slide = 0, hover = 0 } end
                     local nmX, valX = sx+10, sx+COL_W-15
                     local iH = 28
-                    if item.type == "slider" and (#item.name * 7) > 120 then iH = 46 end
+                    if item.type == "slider" then iH = ((#item.name * 7) > (COL_W - 20)) and 60 or 46 end
                     if item.type == "dropdown" and item.open then iH = iH + (#item.options * 22) + 6 end
                     if item.type == "colorpicker" and item.open then iH = iH + 75 end
                     local itemVisible = cy + iH >= contentTop and cy <= contentBottom
@@ -360,12 +360,11 @@ function Module.CreateWindow(self, props)
                             end
                         end
                         local valStr = tostring(item.value); local valW = 7 * #valStr
-                        local barW = 100; local barX = valX - valW - 15 - barW; local barY = cy + 10
-                        local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, barX - nmX - 10, false, contentAlpha)
-                        local controlY = cy + ((labelLines - 1) * 18)
-                        barY = controlY + 10
+                        local barW = 100; local barX = valX - valW - 15 - barW
+                        local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, COL_W - 20, false, contentAlpha)
+                        local controlY = cy + math.max(18, (labelLines * 14) + 4)
+                        local barY = controlY + 10
                         Lib.Label(vector.create(valX - valW, controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
-                        if labelLines > 1 then iH = 46 end
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetFill, dt * 15)

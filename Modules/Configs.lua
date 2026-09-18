@@ -52,6 +52,7 @@ local function apply(self, data)
                 for _, item in ipairs(section.items) do
                     if item.flag and data[item.flag] ~= nil then
                         local value = data[item.flag]
+                        local callbackValue = value
                         if item.type == "toggle" or item.type == "slider" then
                             item.value = value
                         elseif item.type == "dropdown" then
@@ -61,6 +62,7 @@ local function apply(self, data)
                             local g = value.G <= 1 and value.G * 255 or value.G
                             local b = value.B <= 1 and value.B * 255 or value.B
                             item.color = Color3.fromRGB(r, g, b)
+                            callbackValue = item.color
                         elseif item.type == "binder" and type(value) == "table" then
                             item.key = value.Key or item.key
                             item.mode = value.Mode or item.mode
@@ -73,7 +75,13 @@ local function apply(self, data)
                             item.text = tostring(value)
                             item.cursor = #item.text + 1
                         end
-                        if item.callback then item.callback(value) end
+                        if item.callback then
+                            if item.type == "rangeslider" then
+                                item.callback(item.lower, item.upper)
+                            else
+                                item.callback(callbackValue)
+                            end
+                        end
                     end
                 end
             end

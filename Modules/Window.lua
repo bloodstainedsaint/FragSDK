@@ -7,16 +7,35 @@ Module.Widgets = {}
 
 local WIN_W, COL_W = 560, 265
 local DEFAULT_MAX_H = 700
-local SLIDER_W = 100
 local SLIDER_VALUE_W = 30
 local RANGE_VALUE_W = 55
 local SLIDER_ITEM_H = 40
 local SLIDER_LONG_ITEM_H = 54
 local SLIDER_GAP = 14
-local SLIDER_LABEL_MAX_W = 105
+local SLIDER_MIN_W = 60
 
-local function sliderNeedsTopLabel(name)
-    return (#name * 7) > SLIDER_LABEL_MAX_W
+local function getSliderLayout(name, valueWidth)
+    local availableWidth = COL_W - 20
+    local labelWidth = #name * 7
+    local sideBarWidth = availableWidth - labelWidth - (SLIDER_GAP * 2) - valueWidth
+
+    if sideBarWidth >= SLIDER_MIN_W then
+        return {
+            topLabel = false,
+            labelWidth = labelWidth,
+            barWidth = sideBarWidth,
+            valueWidth = valueWidth,
+            height = SLIDER_ITEM_H,
+        }
+    end
+
+    return {
+        topLabel = true,
+        labelWidth = availableWidth,
+        barWidth = availableWidth - SLIDER_GAP - valueWidth,
+        valueWidth = valueWidth,
+        height = SLIDER_LONG_ITEM_H,
+    }
 end
 
 local function textFromKey(key)
@@ -283,7 +302,8 @@ function Module.CreateWindow(self, props)
                 for _, it in ipairs(s.items) do
                     local add = 28 
                     if it.type == "slider" or it.type == "rangeslider" then
-                        add = sliderNeedsTopLabel(it.name) and SLIDER_LONG_ITEM_H or SLIDER_ITEM_H
+                        local valueWidth = it.type == "rangeslider" and RANGE_VALUE_W or SLIDER_VALUE_W
+                        add = getSliderLayout(it.name, valueWidth).height
                     end
                     if it.type == "dropdown" and it.open then add = add + (#it.options * 22) + 6 end
                     if it.type == "colorpicker" and it.open then add = add + 75 end
@@ -378,7 +398,8 @@ function Module.CreateWindow(self, props)
                 for _, it in ipairs(sect.items) do
                     local add = 28
                     if it.type == "slider" or it.type == "rangeslider" then
-                        add = sliderNeedsTopLabel(it.name) and SLIDER_LONG_ITEM_H or SLIDER_ITEM_H
+                        local valueWidth = it.type == "rangeslider" and RANGE_VALUE_W or SLIDER_VALUE_W
+                        add = getSliderLayout(it.name, valueWidth).height
                     end
                     if it.type=="dropdown" and it.open then add=add+(#it.options*22)+6 end
                     if it.type=="colorpicker" and it.open then add=add+75 end
@@ -404,10 +425,11 @@ function Module.CreateWindow(self, props)
                     if not item.anim then item.anim = { slide = 0, hover = 0 } end
                     local nmX, valX = sx+10, sx+COL_W-15
                     local iH = 28
-                    local sliderTopLabel = false
+                    local sliderLayout
                     if item.type == "slider" or item.type == "rangeslider" then
-                        sliderTopLabel = sliderNeedsTopLabel(item.name)
-                        iH = sliderTopLabel and SLIDER_LONG_ITEM_H or SLIDER_ITEM_H
+                        local valueWidth = item.type == "rangeslider" and RANGE_VALUE_W or SLIDER_VALUE_W
+                        sliderLayout = getSliderLayout(item.name, valueWidth)
+                        iH = sliderLayout.height
                     end
                     if item.type == "dropdown" and item.open then iH = iH + (#item.options * 22) + 6 end
                     if item.type == "colorpicker" and item.open then iH = iH + 75 end
@@ -435,11 +457,14 @@ function Module.CreateWindow(self, props)
 
                     elseif itemVisible and item.type == "slider" then
                         local valStr = tostring(item.value); local valW = 7 * #valStr
-                        local barW = SLIDER_W
-                        local valueRight = sx + COL_W - 15
-                        local valueStart = valueRight - SLIDER_VALUE_W
-                        local barX = valueStart - SLIDER_GAP - barW
-                        local controlY = sliderTopLabel and (cy + 18) or cy
+                        local barW = sliderLayout.barWidth
+                        local barX = sx + 10
+                        local valueStart = barX + barW + SLIDER_GAP
+                        if not sliderLayout.topLabel then
+                            barX = sx + 10 + sliderLayout.labelWidth + SLIDER_GAP
+                            valueStart = barX + barW + SLIDER_GAP
+                        end
+                        local controlY = sliderLayout.topLabel and (cy + 18) or cy
                         local barY = controlY + 10
                         local sliderPos = vector.create(sx+4, controlY-2, 0)
                         local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W-8, 24, 0))
@@ -452,7 +477,7 @@ function Module.CreateWindow(self, props)
                             end
                             Lib.State.InputBusy = true
                         end
-                        if sliderTopLabel then
+                        if sliderLayout.topLabel then
                             Lib.Label(vector.create(sx + (COL_W / 2), cy + 2, z+3), item.name, Lib.Theme.Text, true, contentAlpha)
                         else
                             Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
@@ -465,11 +490,14 @@ function Module.CreateWindow(self, props)
                         Lib.Circle(vector.create(barX+item.anim.slide, barY+1, z+4), 4, Lib.Theme.Text, contentAlpha)
 
                     elseif itemVisible and item.type == "rangeslider" then
-                        local barW = 100
-                        local valueRight = sx + COL_W - 15
-                        local valueStart = valueRight - RANGE_VALUE_W
-                        local barX = valueStart - SLIDER_GAP - barW
-                        local controlY = sliderTopLabel and (cy + 18) or cy
+                        local barW = sliderLayout.barWidth
+                        local barX = sx + 10
+                        local valueStart = barX + barW + SLIDER_GAP
+                        if not sliderLayout.topLabel then
+                            barX = sx + 10 + sliderLayout.labelWidth + SLIDER_GAP
+                            valueStart = barX + barW + SLIDER_GAP
+                        end
+                        local controlY = sliderLayout.topLabel and (cy + 18) or cy
                         local barY = controlY + 10
                         local range = math.max(item.max - item.min, item.step)
                         local minPct = math.clamp((item.lower - item.min) / range, 0, 1)
@@ -505,7 +533,7 @@ function Module.CreateWindow(self, props)
                             Lib.State.InputBusy = true
                         end
 
-                        if sliderTopLabel then
+                        if sliderLayout.topLabel then
                             Lib.Label(vector.create(sx + (COL_W / 2), cy + 2, z+3), item.name, Lib.Theme.Text, true, contentAlpha)
                         else
                             Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)

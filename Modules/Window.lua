@@ -18,7 +18,7 @@ local TextKeys = {
     [71] = "g", [72] = "h", [73] = "i", [74] = "j", [75] = "k", [76] = "l",
     [77] = "m", [78] = "n", [79] = "o", [80] = "p", [81] = "q", [82] = "r",
     [83] = "s", [84] = "t", [85] = "u", [86] = "v", [87] = "w", [88] = "x",
-    [89] = "y", [90] = "z", [8] = "BACKSPACE", [13] = "ENTER"
+    [89] = "y", [90] = "z", [8] = "BACKSPACE", [13] = "ENTER", [27] = "ESCAPE", [46] = "DELETE"
 }
 
 local function keyToken(key)
@@ -26,6 +26,8 @@ local function keyToken(key)
     if key == "Backspace" then return 8 end
     if key == "Enter" or key == "Return" then return 13 end
     if key == "Space" then return 32 end
+    if key == "Escape" or key == "Esc" then return 27 end
+    if key == "Delete" then return 46 end
     return nil
 end
 
@@ -567,8 +569,8 @@ function Module.CreateWindow(self, props)
                     elseif itemVisible and item.type == "textbox" then
                         local boxPos = vector.create(sx + 105, cy + 1, z + 3)
                         local boxSize = vector.create(COL_W - 120, 22, 0)
-                        if iClick then item.focused = true end
-                        if click and not Lib:IsMouseOver(boxPos, boxSize) and not hover then item.focused = false end
+                        if click and Lib:IsMouseOver(boxPos, boxSize) then item.focused = true end
+                        if click and not Lib:IsMouseOver(boxPos, boxSize) then item.focused = false end
 
                         if item.focused then
                             local pressed = getpressedkeys()
@@ -580,9 +582,11 @@ function Module.CreateWindow(self, props)
                                     current[token or key] = true
                                     if not item.keyState[token or key] then
                                         local mapped = TextKeys[token]
-                                        if mapped == "BACKSPACE" then
+                                        if mapped == "BACKSPACE" or mapped == "DELETE" then
                                             item.text = string.sub(item.text, 1, math.max(0, #item.text - 1))
                                         elseif mapped == "ENTER" then
+                                            item.focused = false
+                                        elseif mapped == "ESCAPE" then
                                             item.focused = false
                                         elseif mapped then
                                             item.text = item.text .. mapped
@@ -598,7 +602,8 @@ function Module.CreateWindow(self, props)
                         end
 
                         Lib.Label(vector.create(nmX, cy + 5, z + 4), item.name, Lib.Theme.Text, false, contentAlpha)
-                        Lib.Rect(boxPos, boxSize, Lib.Theme.Border, contentAlpha)
+                        local boxBorder = item.focused and Lib.Theme.Accent or Lib.Theme.Border
+                        Lib.Rect(boxPos, boxSize, boxBorder, contentAlpha)
                         Lib.Rect(vector.create(boxPos.x + 1, boxPos.y + 1, z + 3), vector.create(boxSize.x - 2, boxSize.y - 2, 0), Lib.Theme.Header, contentAlpha)
                         Lib.Label(vector.create(boxPos.x + 7, boxPos.y + 5, z + 4), item.text, item.focused and Lib.Theme.Text or Lib.Theme.TextDim, false, contentAlpha)
                     elseif itemVisible and item.type == "binder" then

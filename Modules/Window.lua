@@ -62,7 +62,7 @@ function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
 end
 
 function Module.LabelSmall(pos, text, color, center, alpha)
-    DrawingImmediate.Text(pos, 11, color, alpha or 1, text, center or false, "Proggy")
+    DrawingImmediate.Text(pos, 13, color, alpha or 1, text, center or false, "Proggy")
 end
 
 function Module.FindWindowIndex(self, target)
@@ -441,7 +441,7 @@ function Module.CreateWindow(self, props)
                             end
                             Lib.State.InputBusy = true
                         end
-                        Lib.LabelSmall(vector.create(nmX, cy + 1, z+3), item.name, Lib.Theme.TextDim, false, contentAlpha)
+                        Lib.LabelSmall(vector.create(nmX, cy + 1, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
                         Lib.Label(vector.create(valX - valW, controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW
@@ -490,7 +490,7 @@ function Module.CreateWindow(self, props)
                             Lib.State.InputBusy = true
                         end
 
-                        Lib.LabelSmall(vector.create(nmX, cy + 1, z+3), item.name, Lib.Theme.TextDim, false, contentAlpha)
+                        Lib.LabelSmall(vector.create(nmX, cy + 1, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
                         Lib.Label(vector.create(valueStart, controlY+4, z+3), tostring(item.lower) .. "-" .. tostring(item.upper), Lib.Theme.TextDim, false, contentAlpha)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         Lib.Rect(vector.create(minX, barY, z+3), vector.create(math.max(1, maxX-minX), 2, 0), Lib.Theme.Accent, contentAlpha)

@@ -14,6 +14,8 @@ function Module.InitState()
         InputBusy = false,
         Snapping = { ActiveLines = {} },
         MenuAlpha = 1, DeltaTime = 0, LastRender = os.clock(),
+        MouseWheel = 0,
+        WheelInput = 0,
     }
 end
 
@@ -27,7 +29,9 @@ function Module.UpdateInput(self)
     if workspace.CurrentCamera then self.State.ScreenSize = workspace.CurrentCamera.ViewportSize end
 
     local wheelSuccess, wheelDelta = pcall(getmousewheel)
-    self.State.MouseWheel = wheelSuccess and type(wheelDelta) == "number" and wheelDelta or 0
+    local directWheel = wheelSuccess and type(wheelDelta) == "number" and wheelDelta or 0
+    self.State.MouseWheel = directWheel + (self.State.WheelInput or 0)
+    self.State.WheelInput = 0
 
     local lDown = isleftpressed()
     if lDown and not self.State.MouseDown then self.State.MouseDown = true

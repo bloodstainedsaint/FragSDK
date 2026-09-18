@@ -11,23 +11,14 @@ local SLIDER_LABEL_W = 100
 local SLIDER_W = 100
 local SLIDER_VALUE_W = 30
 
-local TextKeys = {
-    [32] = " ", [48] = "0", [49] = "1", [50] = "2", [51] = "3", [52] = "4",
-    [53] = "5", [54] = "6", [55] = "7", [56] = "8", [57] = "9",
-    [65] = "a", [66] = "b", [67] = "c", [68] = "d", [69] = "e", [70] = "f",
-    [71] = "g", [72] = "h", [73] = "i", [74] = "j", [75] = "k", [76] = "l",
-    [77] = "m", [78] = "n", [79] = "o", [80] = "p", [81] = "q", [82] = "r",
-    [83] = "s", [84] = "t", [85] = "u", [86] = "v", [87] = "w", [88] = "x",
-    [89] = "y", [90] = "z", [8] = "BACKSPACE", [13] = "ENTER", [27] = "ESCAPE", [46] = "DELETE"
-}
-
-local function keyToken(key)
-    if type(key) == "number" then return key end
-    if key == "Backspace" then return 8 end
-    if key == "Enter" or key == "Return" then return 13 end
-    if key == "Space" then return 32 end
-    if key == "Escape" or key == "Esc" then return 27 end
-    if key == "Delete" then return 46 end
+local function textFromKey(key)
+    if type(key) ~= "string" then return nil end
+    if #key == 1 then return key:lower() end
+    if key == "Space" then return " " end
+    if key == "Backspace" then return "BACKSPACE" end
+    if key == "Delete" then return "DELETE" end
+    if key == "Enter" or key == "Return" then return "ENTER" end
+    if key == "Escape" or key == "Esc" then return "ESCAPE" end
     return nil
 end
 
@@ -577,11 +568,14 @@ function Module.CreateWindow(self, props)
                             item.keyState = item.keyState or {}
                             if pressed then
                                 local current = {}
+                                local shift = false
                                 for _, key in ipairs(pressed) do
-                                    local token = keyToken(key)
-                                    current[token or key] = true
-                                    if not item.keyState[token or key] then
-                                        local mapped = TextKeys[token]
+                                    if key == "LeftShift" or key == "RightShift" then shift = true end
+                                end
+                                for _, key in ipairs(pressed) do
+                                    current[key] = true
+                                    if not item.keyState[key] then
+                                        local mapped = textFromKey(key)
                                         if mapped == "BACKSPACE" or mapped == "DELETE" then
                                             item.text = string.sub(item.text, 1, math.max(0, #item.text - 1))
                                         elseif mapped == "ENTER" then
@@ -589,7 +583,7 @@ function Module.CreateWindow(self, props)
                                         elseif mapped == "ESCAPE" then
                                             item.focused = false
                                         elseif mapped then
-                                            item.text = item.text .. mapped
+                                            item.text = item.text .. (shift and mapped:upper() or mapped)
                                         end
                                     end
                                 end

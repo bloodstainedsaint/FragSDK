@@ -488,12 +488,16 @@ function Module.CreateWindow(self, props)
         for _, pg in ipairs(self.pages) do
             pageTabTotal = pageTabTotal + (7 * #pg.name) + 20
         end
-        local pageTabLeft = x + math.max(110, 12 + (7 * #self.name) + 20)
-        local centeredPageTabs = x + ((WIN_W - pageTabTotal) / 2)
+        -- These are offsets inside the window. Adding x here as well as below
+        -- made the page row move roughly twice as far as the window.
+        local pageTabLeft = math.max(110, 12 + (7 * #self.name) + 20)
+        local centeredPageTabs = (WIN_W - pageTabTotal) / 2
         local tx = pageTabTotal <= (WIN_W - 24) and centeredPageTabs or pageTabLeft
         for i, pg in ipairs(self.pages) do
             local w = (7*#pg.name)+20
-            if click and not occluded and Lib:IsMouseOver(vector.create(x+tx,y+1,0), vector.create(w,34,0)) then
+            local tabX = x + tx
+            local tabInHeader = tabX >= x + 2 and tabX + w <= x + WIN_W - 2
+            if tabInHeader and click and not occluded and Lib:IsMouseOver(vector.create(tabX,y+1,0), vector.create(w,34,0)) then
                 if self.activePage ~= i then
                     clearPageCapture(self.pages[self.activePage])
                     self.activePage = i
@@ -502,9 +506,11 @@ function Module.CreateWindow(self, props)
             end
             
             local isActive = (self.activePage == i)
-            Lib.Label(vector.create(x+tx+10,y+10,z+1), pg.name, isActive and Lib.Theme.Accent or Lib.Theme.TextDim, false, winAlpha)
-            if isActive then 
-                Lib.Rect(vector.create(x+tx,y+34-2,z+1), vector.create(w,2,0), Lib.Theme.Accent, winAlpha)
+            if tabInHeader then
+                Lib.Label(vector.create(tabX+10,y+10,z+1), pg.name, isActive and Lib.Theme.Accent or Lib.Theme.TextDim, false, winAlpha)
+                if isActive then 
+                    Lib.Rect(vector.create(tabX,y+34-2,z+1), vector.create(w,2,0), Lib.Theme.Accent, winAlpha)
+                end
             end
             tx = tx + w
         end
@@ -515,22 +521,25 @@ function Module.CreateWindow(self, props)
             for index, sub in ipairs(page.subcategories) do
                 local sw = subWidths[index]
                 local subPos = vector.create(stx, y+36, 0)
-                if click and not occluded and Lib:IsMouseOver(subPos, vector.create(sw, 22, 0)) then
+                local subInBar = stx >= x + 12 and stx + sw <= x + WIN_W - 12
+                if subInBar and click and not occluded and Lib:IsMouseOver(subPos, vector.create(sw, 22, 0)) then
                     clearPageCapture(page)
                     page.activeSubcategory = sub.name
                     self.scroll = 0
                 end
 
                 local activeSub = page.activeSubcategory == sub.name
-                Lib.Label(
-                    vector.create(stx+10, y+41, z+1),
-                    sub.name,
-                    activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
-                    false,
-                    winAlpha
-                )
-                if activeSub then
-                    Lib.Rect(vector.create(stx, y+56, z+1), vector.create(sw, 2, 0), Lib.Theme.Accent, winAlpha)
+                if subInBar then
+                    Lib.Label(
+                        vector.create(stx+10, y+41, z+1),
+                        sub.name,
+                        activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
+                        false,
+                        winAlpha
+                    )
+                    if activeSub then
+                        Lib.Rect(vector.create(stx, y+56, z+1), vector.create(sw, 2, 0), Lib.Theme.Accent, winAlpha)
+                    end
                 end
                 stx = stx + sw
             end
@@ -971,15 +980,18 @@ function Module.CreateWindow(self, props)
             for index, sub in ipairs(page.subcategories) do
                 local subWidth = subWidths[index]
                 local activeSub = page.activeSubcategory == sub.name
-                Lib.Label(
-                    vector.create(redrawX+10, y+41, z+102),
-                    sub.name,
-                    activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
-                    false,
-                    winAlpha
-                )
-                if activeSub then
-                    Lib.Rect(vector.create(redrawX, y+56, z+102), vector.create(subWidth, 2, 0), Lib.Theme.Accent, winAlpha)
+                local subInBar = redrawX >= x + 12 and redrawX + subWidth <= x + WIN_W - 12
+                if subInBar then
+                    Lib.Label(
+                        vector.create(redrawX+10, y+41, z+102),
+                        sub.name,
+                        activeSub and Lib.Theme.Accent or Lib.Theme.TextDim,
+                        false,
+                        winAlpha
+                    )
+                    if activeSub then
+                        Lib.Rect(vector.create(redrawX, y+56, z+102), vector.create(subWidth, 2, 0), Lib.Theme.Accent, winAlpha)
+                    end
                 end
                 redrawX = redrawX + subWidth
             end

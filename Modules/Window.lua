@@ -278,6 +278,11 @@ function Module.CreateWindow(self, props)
         Lib:HandleDraggable(self, true, vector.create(WIN_W, 34, 0))
         
         local x, y, z = self.pos.x, self.pos.y, Lib.Layer.Base
+        if maxScroll > 0 and Lib.State.MouseWheel ~= 0
+            and Lib:IsMouseOver(vector.create(x, y+34, 0), vector.create(WIN_W, windowHeight-34, 0)) then
+            self.scroll = math.clamp(self.scroll - (Lib.State.MouseWheel * 45), 0, maxScroll)
+            Lib.State.InputBusy = true
+        end
         local click = Lib.State.MouseDown and not Lib.State.MouseHeld
         if Lib.State.InputBusy and not self.dragging then click = false end
 
@@ -356,9 +361,12 @@ function Module.CreateWindow(self, props)
                 if sy + sh < contentTop or sy > contentBottom then
                     continue
                 end
-                
-                Lib.Rect(vector.create(sx,sy,z+1), vector.create(COL_W,sh,0), Lib.Theme.Border, contentAlpha)
-                Lib.Rect(vector.create(sx+1,sy+1,z+1), vector.create(COL_W-2,sh-2,0), Lib.Theme.SectionBg, contentAlpha)
+
+                local visibleSectionHeight = math.min(sh, contentBottom - sy)
+                if visibleSectionHeight <= 0 then continue end
+
+                Lib.Rect(vector.create(sx,sy,z+1), vector.create(COL_W,visibleSectionHeight,0), Lib.Theme.Border, contentAlpha)
+                Lib.Rect(vector.create(sx+1,sy+1,z+1), vector.create(COL_W-2,math.max(0, visibleSectionHeight-2),0), Lib.Theme.SectionBg, contentAlpha)
                 Lib.Rect(vector.create(sx+1,sy+1,z+2), vector.create(COL_W-2, 22, 0), Lib.Theme.Header, contentAlpha)
                 Lib.Label(vector.create(sx+8,sy+5,z+3), sect.name, Lib.Theme.TextDim, false, contentAlpha)
                 Lib.Line(vector.create(sx+1,sy+23,z+2), vector.create(sx+COL_W-1,sy+23,z+2), Lib.Theme.Border, contentAlpha, 1)

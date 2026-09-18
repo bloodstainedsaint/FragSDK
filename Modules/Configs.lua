@@ -70,8 +70,16 @@ local function apply(self, data)
                     if item.flag and data[item.flag] ~= nil then
                         local value = data[item.flag]
                         local callbackValue = value
-                        if item.type == "toggle" or item.type == "slider" then
-                            item.value = value
+                        if item.type == "toggle" then
+                            item.value = value == true
+                        elseif item.type == "slider" then
+                            local loaded = tonumber(value)
+                            if loaded then
+                                loaded = math.clamp(loaded, item.min, item.max)
+                                item.value = item.min + (math.round((loaded - item.min) / 1) * 1)
+                                item.value = math.clamp(item.value, item.min, item.max)
+                                callbackValue = item.value
+                            end
                         elseif item.type == "dropdown" then
                             item.selected = value
                         elseif item.type == "colorpicker" and type(value) == "table" then
@@ -97,6 +105,21 @@ local function apply(self, data)
                                 item.callback(item.lower, item.upper)
                             else
                                 item.callback(callbackValue)
+                            end
+                        end
+                        if item.flag then
+                            if item.type == "slider" then
+                                self.Flags[item.flag] = item.value
+                            elseif item.type == "rangeslider" then
+                                self.Flags[item.flag] = {Min = item.lower, Max = item.upper}
+                            elseif item.type == "colorpicker" then
+                                self.Flags[item.flag] = {
+                                    R = colorChannel(item.color.R),
+                                    G = colorChannel(item.color.G),
+                                    B = colorChannel(item.color.B)
+                                }
+                            elseif item.type == "textbox" then
+                                self.Flags[item.flag] = item.text
                             end
                         end
                     end

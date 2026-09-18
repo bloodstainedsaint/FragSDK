@@ -11,7 +11,13 @@ local SLIDER_W = 100
 local SLIDER_VALUE_W = 30
 local RANGE_VALUE_W = 55
 local SLIDER_ITEM_H = 40
+local SLIDER_LONG_ITEM_H = 54
 local SLIDER_GAP = 14
+local SLIDER_LABEL_MAX_W = 105
+
+local function sliderNeedsTopLabel(name)
+    return (#name * 7) > SLIDER_LABEL_MAX_W
+end
 
 local function textFromKey(key)
     if type(key) ~= "string" then return nil end
@@ -60,10 +66,6 @@ function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
     end
 
     return #lines
-end
-
-function Module.LabelSmall(pos, text, color, center, alpha)
-    DrawingImmediate.Text(pos, 13, color, alpha or 1, text, center or false, "Proggy")
 end
 
 function Module.FindWindowIndex(self, target)
@@ -280,7 +282,9 @@ function Module.CreateWindow(self, props)
                 local h = 28
                 for _, it in ipairs(s.items) do
                     local add = 28 
-                    if it.type == "slider" or it.type == "rangeslider" then add = SLIDER_ITEM_H end
+                    if it.type == "slider" or it.type == "rangeslider" then
+                        add = sliderNeedsTopLabel(it.name) and SLIDER_LONG_ITEM_H or SLIDER_ITEM_H
+                    end
                     if it.type == "dropdown" and it.open then add = add + (#it.options * 22) + 6 end
                     if it.type == "colorpicker" and it.open then add = add + 75 end
                     h = h + add
@@ -373,7 +377,9 @@ function Module.CreateWindow(self, props)
                 local sh = 28
                 for _, it in ipairs(sect.items) do
                     local add = 28
-                    if it.type == "slider" or it.type == "rangeslider" then add = SLIDER_ITEM_H end
+                    if it.type == "slider" or it.type == "rangeslider" then
+                        add = sliderNeedsTopLabel(it.name) and SLIDER_LONG_ITEM_H or SLIDER_ITEM_H
+                    end
                     if it.type=="dropdown" and it.open then add=add+(#it.options*22)+6 end
                     if it.type=="colorpicker" and it.open then add=add+75 end
                     sh = sh + add
@@ -398,7 +404,11 @@ function Module.CreateWindow(self, props)
                     if not item.anim then item.anim = { slide = 0, hover = 0 } end
                     local nmX, valX = sx+10, sx+COL_W-15
                     local iH = 28
-                    if item.type == "slider" or item.type == "rangeslider" then iH = SLIDER_ITEM_H end
+                    local sliderTopLabel = false
+                    if item.type == "slider" or item.type == "rangeslider" then
+                        sliderTopLabel = sliderNeedsTopLabel(item.name)
+                        iH = sliderTopLabel and SLIDER_LONG_ITEM_H or SLIDER_ITEM_H
+                    end
                     if item.type == "dropdown" and item.open then iH = iH + (#item.options * 22) + 6 end
                     if item.type == "colorpicker" and item.open then iH = iH + 75 end
                     local itemVisible = cy >= contentTop and cy + iH <= contentBottom
@@ -429,7 +439,7 @@ function Module.CreateWindow(self, props)
                         local valueRight = sx + COL_W - 15
                         local valueStart = valueRight - SLIDER_VALUE_W
                         local barX = valueStart - SLIDER_GAP - barW
-                        local controlY = cy
+                        local controlY = sliderTopLabel and (cy + 18) or cy
                         local barY = controlY + 10
                         local sliderPos = vector.create(sx+4, controlY-2, 0)
                         local sliderHover = not occluded and Lib:IsMouseOver(sliderPos, vector.create(COL_W-8, 24, 0))
@@ -442,7 +452,11 @@ function Module.CreateWindow(self, props)
                             end
                             Lib.State.InputBusy = true
                         end
-                        Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
+                        if sliderTopLabel then
+                            Lib.Label(vector.create(sx + (COL_W / 2), cy + 2, z+3), item.name, Lib.Theme.Text, true, contentAlpha)
+                        else
+                            Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
+                        end
                         Lib.Label(vector.create(valueStart + ((SLIDER_VALUE_W - valW) / 2), controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW
@@ -455,7 +469,7 @@ function Module.CreateWindow(self, props)
                         local valueRight = sx + COL_W - 15
                         local valueStart = valueRight - RANGE_VALUE_W
                         local barX = valueStart - SLIDER_GAP - barW
-                        local controlY = cy
+                        local controlY = sliderTopLabel and (cy + 18) or cy
                         local barY = controlY + 10
                         local range = math.max(item.max - item.min, item.step)
                         local minPct = math.clamp((item.lower - item.min) / range, 0, 1)
@@ -491,7 +505,11 @@ function Module.CreateWindow(self, props)
                             Lib.State.InputBusy = true
                         end
 
-                        Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
+                        if sliderTopLabel then
+                            Lib.Label(vector.create(sx + (COL_W / 2), cy + 2, z+3), item.name, Lib.Theme.Text, true, contentAlpha)
+                        else
+                            Lib.Label(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
+                        end
                         Lib.Label(vector.create(valueStart, controlY+4, z+3), tostring(item.lower) .. "-" .. tostring(item.upper), Lib.Theme.TextDim, false, contentAlpha)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         Lib.Rect(vector.create(minX, barY, z+3), vector.create(math.max(1, maxX-minX), 2, 0), Lib.Theme.Accent, contentAlpha)

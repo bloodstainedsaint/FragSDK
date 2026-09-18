@@ -19,6 +19,10 @@ local function textFromKey(key)
     if key == "Delete" then return "DELETE" end
     if key == "Enter" or key == "Return" then return "ENTER" end
     if key == "Escape" or key == "Esc" then return "ESCAPE" end
+    if key == "Left" or key == "LeftArrow" then return "LEFT" end
+    if key == "Right" or key == "RightArrow" then return "RIGHT" end
+    if key == "Home" then return "HOME" end
+    if key == "End" then return "END" end
     return nil
 end
 
@@ -563,9 +567,17 @@ function Module.CreateWindow(self, props)
                         if click and Lib:IsMouseOver(boxPos, boxSize) then item.focused = true end
                         if click and not Lib:IsMouseOver(boxPos, boxSize) then item.focused = false end
 
+                        item.cursor = item.cursor or (#item.text + 1)
                         if item.focused then
                             local pressed = getpressedkeys()
                             item.keyState = item.keyState or {}
+                            local now = os.clock()
+                            local function deletePrevious()
+                                if item.cursor > 1 then
+                                    item.text = string.sub(item.text, 1, item.cursor - 2) .. string.sub(item.text, item.cursor)
+                                    item.cursor = item.cursor - 1
+                                end
+                            end
                             if pressed then
                                 local current = {}
                                 local shift = false
@@ -576,18 +588,39 @@ function Module.CreateWindow(self, props)
                                     current[key] = true
                                     if not item.keyState[key] then
                                         local mapped = textFromKey(key)
-                                        if mapped == "BACKSPACE" or mapped == "DELETE" then
-                                            item.text = string.sub(item.text, 1, math.max(0, #item.text - 1))
+                                        if mapped == "BACKSPACE" then
+                                            deletePrevious()
+                                            item.repeatKey = key
+                                            item.repeatAt = now + 0.5
+                                        elseif mapped == "DELETE" then
+                                            item.text = string.sub(item.text, 1, item.cursor - 1) .. string.sub(item.text, item.cursor + 1)
                                         elseif mapped == "ENTER" then
                                             item.focused = false
                                         elseif mapped == "ESCAPE" then
                                             item.focused = false
+                                        elseif mapped == "LEFT" then
+                                            item.cursor = math.max(1, item.cursor - 1)
+                                        elseif mapped == "RIGHT" then
+                                            item.cursor = math.min(#item.text + 1, item.cursor + 1)
+                                        elseif mapped == "HOME" then
+                                            item.cursor = 1
+                                        elseif mapped == "END" then
+                                            item.cursor = #item.text + 1
                                         elseif mapped then
-                                            item.text = item.text .. (shift and mapped:upper() or mapped)
+                                            local character = shift and mapped:upper() or mapped
+                                            item.text = string.sub(item.text, 1, item.cursor - 1) .. character .. string.sub(item.text, item.cursor)
+                                            item.cursor = item.cursor + #character
                                         end
+                                    elseif key == item.repeatKey and key == "Backspace" and now >= (item.repeatAt or math.huge) then
+                                        deletePrevious()
+                                        item.repeatAt = now + 0.3
                                     end
                                 end
                                 item.keyState = current
+                                if item.repeatKey and not current[item.repeatKey] then
+                                    item.repeatKey = nil
+                                    item.repeatAt = nil
+                                end
                             else
                                 item.keyState = {}
                             end
@@ -599,7 +632,14 @@ function Module.CreateWindow(self, props)
                         local boxBorder = item.focused and Lib.Theme.Accent or Lib.Theme.Border
                         Lib.Rect(boxPos, boxSize, boxBorder, contentAlpha)
                         Lib.Rect(vector.create(boxPos.x + 1, boxPos.y + 1, z + 3), vector.create(boxSize.x - 2, boxSize.y - 2, 0), Lib.Theme.Header, contentAlpha)
-                        Lib.Label(vector.create(boxPos.x + 7, boxPos.y + 5, z + 4), item.text, item.focused and Lib.Theme.Text or Lib.Theme.TextDim, false, contentAlpha)
+                        local maxChars = math.max(1, math.floor((boxSize.x - 14) / 7))
+                        local startChar = math.max(1, math.min(item.cursor - maxChars, #item.text - maxChars + 1))
+                        local visibleText = string.sub(item.text, startChar, startChar + maxChars - 1)
+                        Lib.Label(vector.create(boxPos.x + 7, boxPos.y + 5, z + 4), visibleText, item.focused and Lib.Theme.Text or Lib.Theme.TextDim, false, contentAlpha)
+                        if item.focused then
+                            local caretIndex = math.max(0, item.cursor - startChar)
+                            Lib.Rect(vector.create(boxPos.x + 7 + (caretIndex * 7), boxPos.y + 4, z + 4), vector.create(1, 14, 0), Lib.Theme.Accent, contentAlpha)
+                        end
                     elseif itemVisible and item.type == "binder" then
                         if Lib.State.RightMouseDown and not Lib.State.RightMouseHeld and not Lib.State.ContextMenu.IsOpen and hover then
                             Lib.State.ContextMenu = {
@@ -731,7 +771,8 @@ function Module.CreateWindow(self, props)
             function sec:Button(p) local item = {type="button", name=p.Name, callback=p.Callback}; table.insert(sec.items, item); return item end
             function sec:ColorPicker(p) local c = p.Default or Color3.new(1,1,1); table.insert(sec.items, {type="colorpicker", name=p.Name, color=c, open=false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = {R=c.R, G=c.G, B=c.B} end end
             function sec:Textbox(p)
-                local item = {type="textbox", name=p.Name, text=p.Default or "", focused=false, keyState={}, callback=p.Callback, flag=p.Flag}
+                local text = p.Default or ""
+                local item = {type="textbox", name=p.Name, text=text, cursor=#text + 1, focused=false, keyState={}, callback=p.Callback, flag=p.Flag}
                 table.insert(sec.items, item)
                 if p.Flag then Lib.Flags[p.Flag] = item.text end
                 return item

@@ -23,6 +23,8 @@ Main Functions:
   Adds a subcategory tab inside a page. Subcategory tabs appear below the
   major page tabs and only show sections assigned to that subcategory.
   - config: { Name = string }
+  - Subcategories are centered when they fit. If they overflow, use the
+    mouse wheel over the subcategory strip to scroll horizontally.
   
 * page:Section(config)
   Adds a column container to a page.
@@ -61,6 +63,7 @@ Widgets (Add these to sections):
 * section:Slider(config)
   A slider bar to adjust numbers.
   - config: { Name = string, Min = num, Max = num, Default = num, Flag = string, Callback = function(value) }
+  - Right-click the slider row to reset it to Default.
   
 * section:Dropdown(config)
   A dropdown menu of options.
@@ -106,6 +109,7 @@ Widgets (Add these to sections):
       Callback = function(minValue, maxValue)
     }
   - The knobs snap to Step and cannot cross each other.
+  - Right-click the slider row to reset both knobs to their defaults.
 
 CONFIGURATION TAB
 

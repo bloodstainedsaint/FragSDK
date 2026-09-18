@@ -605,7 +605,7 @@ function Module.CreateWindow(self, props)
                             local g = slider("G", math.floor(item.color.G*255), 255)
                             local b = slider("B", math.floor(item.color.B*255), 255)
                             local nc = Color3.fromRGB(r,g,b)
-                            if nc ~= item.color then item.color = nc; if item.callback then item.callback(nc) end; if item.flag then Lib.Flags[item.flag] = {R=nc.R, G=nc.G, B=nc.B} end end
+                            if nc ~= item.color then item.color = nc; if item.callback then item.callback(nc) end; if item.flag then Lib.Flags[item.flag] = {R=math.floor(nc.R * 255 + 0.5), G=math.floor(nc.G * 255 + 0.5), B=math.floor(nc.B * 255 + 0.5)} end end
                             iH = iH + 75
                         end
                     elseif itemVisible and item.type == "textbox" then
@@ -816,7 +816,7 @@ function Module.CreateWindow(self, props)
                 return item
             end
             function sec:Button(p) local item = {type="button", name=p.Name, callback=p.Callback}; table.insert(sec.items, item); return item end
-            function sec:ColorPicker(p) local c = p.Default or Color3.new(1,1,1); table.insert(sec.items, {type="colorpicker", name=p.Name, color=c, open=false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = {R=c.R, G=c.G, B=c.B} end end
+            function sec:ColorPicker(p) local c = p.Default or Color3.new(1,1,1); table.insert(sec.items, {type="colorpicker", name=p.Name, color=c, open=false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = {R=math.floor(c.R * 255 + 0.5), G=math.floor(c.G * 255 + 0.5), B=math.floor(c.B * 255 + 0.5)} end end
             function sec:Textbox(p)
                 local text = p.Default or ""
                 local item = {type="textbox", name=p.Name, text=text, cursor=#text + 1, focused=false, keyState={}, callback=p.Callback, flag=p.Flag}

@@ -76,7 +76,18 @@ Widgets (Add these to sections):
   
 * section:Binder(config)
   A key binder element.
-  - config: { Name = string, Default = string, Flag = string, Callback = function(key) }
+  - config: {
+      Name = string,
+      Default = string,
+      Mode = "Toggle" | "Hold" | "Tap",
+      Flag = string,
+      Callback = function(key),
+      ActionCallback = function(state, key, mode)
+    }
+  - Right-click a binder to change its mode.
+  - Toggle changes state each press.
+  - Hold is active only while the key is held.
+  - Tap fires once per key press.
 
 State Options:
 * Saved option values are stored at: Frag.Flags[FlagName]

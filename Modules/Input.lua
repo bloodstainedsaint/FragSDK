@@ -55,9 +55,57 @@ function Module.UpdateInput(self)
         self.State.Enabled = not self.State.Enabled; self.State.LastToggle = os.clock()
     end
 
+    self:UpdateBinds(keys)
+
     local targetAlpha = self.State.Enabled and 1 or 0
     self.State.MenuAlpha = self.Lerp(self.State.MenuAlpha, targetAlpha, 10 * self.State.DeltaTime)
     if math.abs(self.State.MenuAlpha - targetAlpha) < 0.01 then self.State.MenuAlpha = targetAlpha end
+end
+
+function Module.UpdateBinds(self, keys)
+    if not keys then return end
+
+    local down = {}
+    for _, key in ipairs(keys) do down[key] = true end
+
+    for _, window in ipairs(self.Windows) do
+        for _, page in ipairs(window.pages) do
+            for _, section in ipairs(page.sections) do
+                for _, item in ipairs(section.items) do
+                    if item.type == "binder" and item.key ~= "None" and not item.listening then
+                        local pressed = down[item.key] == true
+                        local wasPressed = item.wasPressed == true
+                        local mode = item.mode or "Toggle"
+
+                        if mode == "Hold" then
+                            if pressed ~= item.active then
+                                item.active = pressed
+                                if item.actionCallback then item.actionCallback(item.active, item.key, mode) end
+                            end
+                        elseif mode == "Toggle" then
+                            if pressed and not wasPressed then
+                                item.active = not item.active
+                                if item.actionCallback then item.actionCallback(item.active, item.key, mode) end
+                            end
+                        elseif mode == "Tap" then
+                            if pressed and not wasPressed and item.actionCallback then
+                                item.actionCallback(item.key, mode)
+                            end
+                        end
+
+                        item.wasPressed = pressed
+                        if item.flag then
+                            self.Flags[item.flag] = {
+                                Key = item.key,
+                                Mode = mode,
+                                Active = item.active
+                            }
+                        end
+                    end
+                end
+            end
+        end
+    end
 end
 
 function Module.IsMouseOver(self, pos, size)

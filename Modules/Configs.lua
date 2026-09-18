@@ -1,5 +1,13 @@
 local Module = {}
 
+local function ensureFolder(folder)
+    local current = ""
+    for part in folder:gmatch("[^/]+") do
+        current = current == "" and part or current .. "/" .. part
+        if not isfolder(current) then makefolder(current) end
+    end
+end
+
 local function safeName(name)
     name = tostring(name or ""):gsub("[^%w_%-%s]", ""):gsub("%s+", "_")
     return name
@@ -17,7 +25,7 @@ local function readIndex(folder)
 end
 
 local function writeIndex(folder, names)
-    if not isfolder(folder) then makefolder(folder) end
+    ensureFolder(folder)
     writefile(folder .. "/index.json", crypt.json.encode(names))
 end
 
@@ -63,6 +71,7 @@ local function apply(self, data)
                             if item.lower >= item.upper then item.upper = math.min(item.max, item.lower + item.step) end
                         elseif item.type == "textbox" then
                             item.text = tostring(value)
+                            item.cursor = #item.text + 1
                         end
                         if item.callback then item.callback(value) end
                     end
@@ -74,7 +83,14 @@ end
 
 function Module.AddConfigTab(self, window, props)
     props = props or {}
-    local folder = props.Folder or "FragSDK/Configs"
+    local baseFolder = props.Folder or "FragSDK/Configs"
+    local gameId = props.GameId
+    if gameId == nil and props.PerGame ~= false then
+        local ok, currentGameId = pcall(function() return game.GameId end)
+        gameId = ok and currentGameId or 0
+    end
+    local folder = baseFolder
+    if props.PerGame ~= false then folder = baseFolder .. "/" .. tostring(gameId or 0) end
     local page = window:Page({Name = props.Name or "Configs"})
     local left = page:Section({Name = "Configuration", Side = "Left"})
     local right = page:Section({Name = "Actions", Side = "Right"})

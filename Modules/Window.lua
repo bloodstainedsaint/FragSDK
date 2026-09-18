@@ -489,9 +489,8 @@ function Module.CreateWindow(self, props)
             pageTabTotal = pageTabTotal + (7 * #pg.name) + 20
         end
         local pageTabLeft = x + math.max(110, 12 + (7 * #self.name) + 20)
-        local pageTabRight = x + WIN_W - 12
-        local pageTabAreaWidth = pageTabRight - pageTabLeft
-        local tx = pageTabLeft + math.max(0, (pageTabAreaWidth - pageTabTotal) / 2)
+        local centeredPageTabs = x + ((WIN_W - pageTabTotal) / 2)
+        local tx = pageTabTotal <= (WIN_W - 24) and centeredPageTabs or pageTabLeft
         for i, pg in ipairs(self.pages) do
             local w = (7*#pg.name)+20
             if click and not occluded and Lib:IsMouseOver(vector.create(x+tx,y+1,0), vector.create(w,34,0)) then
@@ -1049,11 +1048,16 @@ function Module.CreateWindow(self, props)
         function pg:Section(p)
             local sec = {name=p.Name, side=p.Side or "Left", subcategory=p.Subcategory, items={}}
             function sec:Toggle(p) table.insert(sec.items, {type="toggle", name=p.Name, value=p.Default or false, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or false end end
-            function sec:Slider(p) table.insert(sec.items, {type="slider", name=p.Name, value=p.Default or p.Min, default=p.Default or p.Min, min=p.Min, max=p.Max, callback=p.Callback, flag=p.Flag}); if p.Flag then Lib.Flags[p.Flag] = p.Default or p.Min end end
+            function sec:Slider(p)
+                local default = math.clamp(p.Default or p.Min, p.Min, p.Max)
+                table.insert(sec.items, {type="slider", name=p.Name, value=default, default=default, min=p.Min, max=p.Max, callback=p.Callback, flag=p.Flag})
+                if p.Flag then Lib.Flags[p.Flag] = default end
+            end
             function sec:RangeSlider(p)
                 local step = p.Step or 1
-                local lower = p.DefaultMin or p.Min
-                local upper = p.DefaultMax or p.Max
+                local lower = snapSliderValue(p.DefaultMin or p.Min, p.Min, p.Max, step)
+                local upper = snapSliderValue(p.DefaultMax or p.Max, p.Min, p.Max, step)
+                if lower >= upper then upper = math.min(p.Max, lower + step) end
                 local item = {type="rangeslider", name=p.Name, min=p.Min, max=p.Max, step=step, lower=lower, upper=upper, defaultLower=lower, defaultUpper=upper, callback=p.Callback, flag=p.Flag}
                 table.insert(sec.items, item)
                 if p.Flag then Lib.Flags[p.Flag] = {Min=lower, Max=upper} end

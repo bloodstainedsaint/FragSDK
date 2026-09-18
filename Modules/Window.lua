@@ -7,8 +7,9 @@ Module.Widgets = {}
 
 local WIN_W, COL_W = 560, 265
 local DEFAULT_MAX_H = 700
-local SLIDER_LABEL_W = 120
+local SLIDER_LABEL_W = 100
 local SLIDER_W = 100
+local SLIDER_VALUE_W = 30
 
 function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
     local maxChars = math.max(1, math.floor(maxWidth / 7))
@@ -395,7 +396,9 @@ function Module.CreateWindow(self, props)
                     elseif itemVisible and item.type == "slider" then
                         local valStr = tostring(item.value); local valW = 7 * #valStr
                         local barW = SLIDER_W
-                        local barX = sx + COL_W - barW - 15
+                        local valueRight = sx + COL_W - 15
+                        local valueStart = valueRight - SLIDER_VALUE_W
+                        local barX = valueStart - 8 - barW
                         local isLongLabel = (#item.name * 7) > SLIDER_LABEL_W
                         local labelLines = 1
                         if isLongLabel then

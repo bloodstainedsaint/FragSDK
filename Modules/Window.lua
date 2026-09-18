@@ -425,9 +425,10 @@ function Module.CreateWindow(self, props)
                     elseif itemVisible and item.type == "slider" then
                         local valStr = tostring(item.value); local valW = 7 * #valStr
                         local barW = SLIDER_W
-                        local valueRight = sx + COL_W - 15
-                        local valueStart = valueRight - SLIDER_VALUE_W
-                        local barX = valueStart - 8 - barW
+                        local groupW = barW + 8 + SLIDER_VALUE_W
+                        local groupX = sx + ((COL_W - groupW) / 2)
+                        local barX = groupX
+                        local valueStart = barX + barW + 8
                         local controlY = cy + 16
                         local barY = controlY + 10
                         local sliderPos = vector.create(sx+4, controlY-2, 0)
@@ -441,8 +442,8 @@ function Module.CreateWindow(self, props)
                             end
                             Lib.State.InputBusy = true
                         end
-                        Lib.LabelSmall(vector.create(nmX, cy + 1, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
-                        Lib.Label(vector.create(valX - valW, controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
+                        Lib.LabelSmall(vector.create(barX + (barW / 2), cy + 1, z+3), item.name, Lib.Theme.Text, true, contentAlpha)
+                        Lib.Label(vector.create(valueStart + ((SLIDER_VALUE_W - valW) / 2), controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetFill, dt * 15)
@@ -451,9 +452,10 @@ function Module.CreateWindow(self, props)
 
                     elseif itemVisible and item.type == "rangeslider" then
                         local barW = 100
-                        local valueRight = sx + COL_W - 15
-                        local valueStart = valueRight - RANGE_VALUE_W
-                        local barX = valueStart - 8 - barW
+                        local groupW = barW + 8 + RANGE_VALUE_W
+                        local groupX = sx + ((COL_W - groupW) / 2)
+                        local barX = groupX
+                        local valueStart = barX + barW + 8
                         local controlY = cy + 16
                         local barY = controlY + 10
                         local range = math.max(item.max - item.min, item.step)
@@ -490,7 +492,7 @@ function Module.CreateWindow(self, props)
                             Lib.State.InputBusy = true
                         end
 
-                        Lib.LabelSmall(vector.create(nmX, cy + 1, z+3), item.name, Lib.Theme.Text, false, contentAlpha)
+                        Lib.LabelSmall(vector.create(barX + (barW / 2), cy + 1, z+3), item.name, Lib.Theme.Text, true, contentAlpha)
                         Lib.Label(vector.create(valueStart, controlY+4, z+3), tostring(item.lower) .. "-" .. tostring(item.upper), Lib.Theme.TextDim, false, contentAlpha)
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         Lib.Rect(vector.create(minX, barY, z+3), vector.create(math.max(1, maxX-minX), 2, 0), Lib.Theme.Accent, contentAlpha)

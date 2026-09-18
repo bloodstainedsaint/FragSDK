@@ -417,7 +417,7 @@ function Module.CreateWindow(self, props)
         local subScrollMax = math.max(0, subTotalWidth - subBarWidth)
         page.subScroll = math.clamp(page.subScroll or 0, 0, subScrollMax)
         local subBarHover = hasSubcategories and Lib:IsMouseOver(
-            vector.create(x + 12, y + 35, 0),
+            vector.create(x + 12, y + 58, 0),
             vector.create(subBarWidth, 24, 0)
         )
         if subScrollMax > 0 and subBarHover and Lib.State.MouseWheel ~= 0 then
@@ -431,10 +431,10 @@ function Module.CreateWindow(self, props)
             return x + 12 + ((subBarWidth - subTotalWidth) / 2)
         end
 
-        -- Header rows: title, info, major pages, then optional subcategories.
-        local pageRowTop = 52
-        local subRowTop = 76
-        local contentStart = hasSubcategories and 101 or 77
+        -- Header rows: status/name, major pages, then optional subcategories.
+        local pageRowTop = 34
+        local subRowTop = 58
+        local contentStart = hasSubcategories and 83 or 59
         local lY, rY = contentStart, contentStart
         
         if page then
@@ -485,17 +485,15 @@ function Module.CreateWindow(self, props)
         Lib.Rect(vector.create(x,y,z), self.size, Lib.Theme.Border, winAlpha)
         Lib.Rect(vector.create(x+1,y+1,z), vector.create(WIN_W-2, windowHeight-2,0), Lib.Theme.Background, winAlpha)
         Lib.Rect(vector.create(x+1,y+1,z), vector.create(WIN_W-2,34,0), Lib.Theme.Header, winAlpha)
-        Lib.Line(vector.create(x+1,y+34,z), vector.create(x+WIN_W-1,y+34,z), Lib.Theme.Border, winAlpha, 1)
-        Lib.Rect(vector.create(x+1, y+35, z), vector.create(WIN_W-2, 17, 0), Lib.Theme.Background, winAlpha)
         local infoText = self.info
         if type(infoText) == "function" then
             local ok, result = pcall(infoText)
             infoText = ok and result or ""
         end
         if infoText and tostring(infoText) ~= "" then
-            Lib.Label(vector.create(x+12, y+39, z+1), tostring(infoText), Lib.Theme.TextDim, false, winAlpha)
+            Lib.Label(vector.create(x+12, y+10, z+1), tostring(infoText), Lib.Theme.Text, false, winAlpha)
         end
-        Lib.Line(vector.create(x+1,y+51,z), vector.create(x+WIN_W-1,y+51,z), Lib.Theme.Border, winAlpha, 1)
+        Lib.Line(vector.create(x+1,y+34,z), vector.create(x+WIN_W-1,y+34,z), Lib.Theme.Border, winAlpha, 1)
 
         local pageTabTotal = 0
         for _, pg in ipairs(self.pages) do
@@ -529,7 +527,7 @@ function Module.CreateWindow(self, props)
         end
 
         if hasSubcategories then
-            Lib.Line(vector.create(x+1, y+100, z), vector.create(x+WIN_W-1, y+100, z), Lib.Theme.Border, winAlpha, 1)
+            Lib.Line(vector.create(x+1, y+82, z), vector.create(x+WIN_W-1, y+82, z), Lib.Theme.Border, winAlpha, 1)
             local stx = subcategoryStart()
             for index, sub in ipairs(page.subcategories) do
                 local sw = subWidths[index]
@@ -559,7 +557,7 @@ function Module.CreateWindow(self, props)
         end
         
         local contentAlpha = self.tabAlpha * winAlpha
-        local contentTop = y + (hasSubcategories and 101 or 77)
+        local contentTop = y + (hasSubcategories and 83 or 59)
         local contentBottom = y + windowHeight - 8
 
         if page then
@@ -988,18 +986,7 @@ function Module.CreateWindow(self, props)
         )
 
         do
-            Lib.Rect(vector.create(x+1, y+35, z+101), vector.create(WIN_W-2, 17, 0), Lib.Theme.Background, winAlpha)
-            local redrawInfo = self.info
-            if type(redrawInfo) == "function" then
-                local ok, result = pcall(redrawInfo)
-                redrawInfo = ok and result or ""
-            end
-            if redrawInfo and tostring(redrawInfo) ~= "" then
-                Lib.Label(vector.create(x+12, y+39, z+102), tostring(redrawInfo), Lib.Theme.TextDim, false, winAlpha)
-            end
-            Lib.Line(vector.create(x+1, y+51, z+101), vector.create(x+WIN_W-1, y+51, z+101), Lib.Theme.Border, winAlpha, 1)
-
-            Lib.Rect(vector.create(x+1, y+52, z+101), vector.create(WIN_W-2, 24, 0), Lib.Theme.Header, winAlpha)
+            Lib.Rect(vector.create(x+1, y+35, z+101), vector.create(WIN_W-2, 24, 0), Lib.Theme.Header, winAlpha)
             local redrawPageX = pageTabTotal <= (WIN_W - 24) and x + ((WIN_W - pageTabTotal) / 2) or x + pageTabLeft
             for index, redrawPage in ipairs(self.pages) do
                 local pageWidth = (7 * #redrawPage.name) + 20
@@ -1015,7 +1002,7 @@ function Module.CreateWindow(self, props)
             end
 
             if hasSubcategories then
-                Lib.Line(vector.create(x+1, y+100, z+101), vector.create(x+WIN_W-1, y+100, z+101), Lib.Theme.Border, winAlpha, 1)
+                Lib.Line(vector.create(x+1, y+82, z+101), vector.create(x+WIN_W-1, y+82, z+101), Lib.Theme.Border, winAlpha, 1)
                 local redrawX = subcategoryStart()
                 for index, sub in ipairs(page.subcategories) do
                     local subWidth = subWidths[index]
@@ -1060,7 +1047,7 @@ function Module.CreateWindow(self, props)
 
         if maxScroll > 0 then
             local trackX = x + WIN_W - 8
-            local trackY = y + (hasSubcategories and 101 or 77)
+            local trackY = y + (hasSubcategories and 83 or 59)
             local trackH = math.max(10, windowHeight - (trackY - y) - 8)
             local thumbH = math.max(24, trackH * (windowHeight / contentHeight))
             local thumbTravel = trackH - thumbH

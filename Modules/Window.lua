@@ -7,6 +7,40 @@ Module.Widgets = {}
 
 local WIN_W, COL_W = 560, 265 
 
+function Module.LabelWrapped(pos, text, color, maxWidth, center, alpha)
+    local maxChars = math.max(1, math.floor(maxWidth / 7))
+    local lines = {}
+    local current = ""
+
+    for word in text:gmatch("%S+") do
+        if current ~= "" and #current + #word + 1 > maxChars then
+            table.insert(lines, current)
+            current = word
+        elseif current == "" then
+            current = word
+        else
+            current = current .. " " .. word
+        end
+    end
+
+    if current ~= "" then table.insert(lines, current) end
+    if #lines == 0 then lines = { text } end
+
+    for i, line in ipairs(lines) do
+        DrawingImmediate.Text(
+            vector.create(pos.x, pos.y + ((i - 1) * 14), pos.z),
+            13,
+            color,
+            alpha or 1,
+            line,
+            center or false,
+            "Proggy"
+        )
+    end
+
+    return #lines
+end
+
 function Module.FindWindowIndex(self, target)
     for i, w in ipairs(self.Windows) do
         if w == target then return i end
@@ -205,6 +239,7 @@ function Module.CreateWindow(self, props)
                 local h = 28
                 for _, it in ipairs(s.items) do
                     local add = 28 
+                    if it.type == "slider" and (#it.name * 7) > 120 then add = 46 end
                     if it.type == "dropdown" and it.open then add = add + (#it.options * 22) + 6 end
                     if it.type == "colorpicker" and it.open then add = add + 75 end
                     h = h + add
@@ -287,7 +322,7 @@ function Module.CreateWindow(self, props)
                         local targetSlide = item.value and 1 or 0
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetSlide, dt * 12)
                         local swW = 22; local swX = valX - swW
-                        Lib.LabelFit(vector.create(nmX, cy+4, z+3), item.name, item.value and Lib.Theme.Text or Lib.Theme.TextDim, swX - nmX - 10, false, contentAlpha)
+                        Lib.Label(vector.create(nmX, cy+4, z+3), item.name, item.value and Lib.Theme.Text or Lib.Theme.TextDim, false, contentAlpha)
                         local curCol = Lib.LerpColor(Lib.Theme.SwitchBg, Lib.Theme.Accent, item.anim.slide)
                         Lib.Circle(vector.create(swX, cy+10, z+3), 6, curCol, contentAlpha)
                         Lib.Circle(vector.create(swX+12, cy+10, z+3), 6, curCol, contentAlpha)
@@ -305,9 +340,12 @@ function Module.CreateWindow(self, props)
                             end
                         end
                         local valStr = tostring(item.value); local valW = 7 * #valStr
-                        Lib.Label(vector.create(valX - valW, cy + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
                         local barW = 100; local barX = valX - valW - 15 - barW; local barY = cy + 10
-                        Lib.LabelFit(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, barX - nmX - 10, false, contentAlpha)
+                        local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, barX - nmX - 10, false, contentAlpha)
+                        local controlY = cy + ((labelLines - 1) * 18)
+                        barY = controlY + 10
+                        Lib.Label(vector.create(valX - valW, controlY + 4, z+3), valStr, Lib.Theme.TextDim, false, contentAlpha)
+                        if labelLines > 1 then iH = 46 end
                         Lib.Rect(vector.create(barX, barY, z+3), vector.create(barW, 2, 0), Lib.Theme.SwitchBg, contentAlpha)
                         local targetFill = ((item.value - item.min)/(item.max - item.min)) * barW
                         item.anim.slide = Lib.Lerp(item.anim.slide, targetFill, dt * 15)
@@ -321,7 +359,8 @@ function Module.CreateWindow(self, props)
                             local active = {}; for k,v in pairs(item.selected) do if v then table.insert(active, k) end end
                             if #active == 0 then dispText = "None" elseif #active <= 3 then dispText = table.concat(active, ", ") else dispText = #active .. " Selected" end
                         end
-                        Lib.LabelFit(vector.create(nmX, cy+4, z+3), item.name, Lib.Theme.Text, valX - nmX - 30, false, contentAlpha)
+                        local labelLines = Lib.LabelWrapped(vector.create(nmX, cy+4, z+3), item.name, Lib.Theme.Text, valX - nmX - 30, false, contentAlpha)
+                        if labelLines > 1 then iH = 46 end
                         Lib.Label(vector.create(valX-(7*#dispText)-15, cy+4, z+3), dispText, Lib.Theme.Accent, false, contentAlpha)
                         local triC = item.open and Lib.Theme.Accent or Lib.Theme.TextDim; local cx, cy_c = valX-5, cy+10
                         if item.open then Lib.Triangle(vector.create(cx, cy_c-3, z+3), vector.create(cx-4, cy_c+2, z+3), vector.create(cx+4, cy_c+2, z+3), triC, contentAlpha)
@@ -353,7 +392,8 @@ function Module.CreateWindow(self, props)
                         Lib.Label(vector.create(nmX, cy+4, z+3), item.name, txtCol, false, contentAlpha)
                     elseif item.type == "colorpicker" then
                         if iClick then item.open = not item.open end
-                        Lib.LabelFit(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, valX - nmX - 30, false, contentAlpha)
+                        local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, valX - nmX - 30, false, contentAlpha)
+                        if labelLines > 1 then iH = 46 end
                         Lib.Rect(vector.create(valX - 20, cy + 6, z+3), vector.create(20, 10, 0), item.color, contentAlpha)
                         if item.open then
                             local py = cy + 28
@@ -391,7 +431,8 @@ function Module.CreateWindow(self, props)
                         end
                         local txt = "[" .. (item.listening and "?" or item.key) .. "]"
                         local keyW = (7 * #txt)
-                        Lib.LabelFit(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, valX - nmX - keyW - 10, false, contentAlpha)
+                        local labelLines = Lib.LabelWrapped(vector.create(nmX, cy + 4, z+3), item.name, Lib.Theme.Text, valX - nmX - keyW - 10, false, contentAlpha)
+                        if labelLines > 1 then iH = 46 end
                         Lib.Label(vector.create(valX - keyW, cy + 4, z+3), txt, item.listening and Lib.Theme.Accent or Lib.Theme.TextDim, false, contentAlpha)
                     end
                     cy = cy + iH
